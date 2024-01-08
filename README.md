@@ -15,3 +15,6 @@
 - Models: classes defining data models for the app to work with
     - ``DataStamp``: general information attached to all data sent, e.g., timestamp and coordinates
 - Services: Modular classes implementing internal functionality
+
+## Notes and useful things
+Most browsers have a limit of 6 connections per domain. Since each SSE endpoint represents a connection that stays open indeterminatly, we have to be very careful when subscribing to SSEs. However, response bodies consist of ``data`` tags and ``event`` tags, so we can have a single endpoint which sends all the data. Thus the endpoints specified above become internal spearations which all write to the same endpoint.
