@@ -1,8 +1,6 @@
 ﻿using backend24.Models;
 using backend24.Services.ServerEventSenders;
 
-using Microsoft.AspNetCore.Mvc.Diagnostics;
-
 namespace backend24.Services.DataProcessors
 {
 	/// <summary>
