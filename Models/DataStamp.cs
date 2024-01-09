@@ -1,8 +1,8 @@
 ﻿namespace backend24.Models
 {
-	public struct DataStamp
+	public readonly struct DataStamp
 	{
-		public long Timestamp { get; set; }
-		public GPSCoords Coordinates { get; set; }
+		public long Timestamp { get; init; }
+		public GPSCoords Coordinates { get; init; }
 	}
 }

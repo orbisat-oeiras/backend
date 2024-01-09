@@ -17,6 +17,7 @@
 - Services: Modular classes implementing internal functionality
 
 ## Data flow
+- All data is encapsulated in ``EventData`` objects, which pack the actual data together with a ``DataStamp``, which in turn contains mandatory information (like timestamp and GPS coordinates)
 - ``IDataProvider``s emit an event when they get data
 - ``IDataProcessor``s subscribe to providers, process their data and send a new event
 - The main controller subscribes to the final providers (processors are also providers) and communicates their data to the client

@@ -2,12 +2,12 @@
 
 namespace backend24.Models
 {
-	public struct GPSCoords
+	public readonly struct GPSCoords
 	{
 		[Range(-90,90)]
-        public float Latitude { get; set; }
+        public float Latitude { get; init; }
 		[Range(-180, 180)]
-		public float Longitude { get; set; }
-		public float Altitude { get; set; }
+		public float Longitude { get; init; }
+		public float Altitude { get; init; }
 	}
 }
