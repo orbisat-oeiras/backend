@@ -16,5 +16,10 @@
     - ``DataStamp``: general information attached to all data sent, e.g., timestamp and coordinates
 - Services: Modular classes implementing internal functionality
 
+## Data flow
+- ``IDataProvider``s emit an event when they get data
+- ``IDataProcessor``s subscribe to providers, process their data and send a new event
+- The main controller subscribes to the final providers (processors are also providers) and communicates their data to the client
+
 ## Notes and useful things
 Most browsers have a limit of 6 connections per domain. Since each SSE endpoint represents a connection that stays open indeterminatly, we have to be very careful when subscribing to SSEs. However, response bodies consist of ``data`` tags and ``event`` tags, so we can have a single endpoint which sends all the data. Thus the endpoints specified above become internal spearations which all write to the same endpoint.
