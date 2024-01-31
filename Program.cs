@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Console;
 namespace backend24
 {
 	public class Program
@@ -5,6 +6,9 @@ namespace backend24
 		public static void Main(string[] args) {
 			// Create a builder, using the arguments passed from the command line.
 			var builder = WebApplication.CreateBuilder(args);
+			// Reset logging to the console
+			builder.Logging.ClearProviders();
+			builder.Logging.AddConsole();
 
 			// Add services to the container.
 			// This will register all classes annotated with ApiController
