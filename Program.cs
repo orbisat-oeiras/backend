@@ -23,7 +23,7 @@ namespace backend24
 			}
 
 			app.UseHttpsRedirection();
-			app.UseAuthorization();
+			app.UseAuthorization(); // TODO: Research this - is it necessary?
 			app.MapControllers();
 
 			// Start the app.
