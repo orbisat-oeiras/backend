@@ -20,9 +20,9 @@ namespace backend24.Controllers
 
 		[HttpGet()]
 		public async Task SSE() {
-			Response.Headers.Add("Content-Type", "text/event-stream");
-			Response.Headers.Add("Cache-Control", "no-cache");
-			Response.Headers.Add("Connection", "keep-alive");
+			Response.Headers["Content-Type"] = "text/event-stream";
+			Response.Headers["Cache-Control"] = "no-cache";
+			Response.Headers["Connection"] = "keep-alive";
 
 			while(true) {
 				await Response.WriteAsync($"data: Controller at {DateTime.Now}\r\r");
