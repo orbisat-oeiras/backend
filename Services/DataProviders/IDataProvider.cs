@@ -1,6 +1,6 @@
 ﻿using backend24.Models;
 
-namespace backend24.Services.ServerEventSenders
+namespace backend24.Services.DataProviders
 {
 	/// <summary>
 	/// Contract for a data provider.
