@@ -8,7 +8,7 @@ namespace backend24.Services.EventFinalizers
 	/// </summary>
 	public class TemperatureFinalizer : EventFinalizerBase<float>
 	{
-		public TemperatureFinalizer(IDataProvider<float> provider) : base(provider) { }
+		public TemperatureFinalizer([FromKeyedServices(ServiceKeys.TemperatureScaleProcessor)]IDataProvider<float> provider) : base(provider) { }
 
 		protected override EventData<(string, float)> Process(EventData<float> data) {
 			return new EventData<(string, float)> {

@@ -18,7 +18,7 @@ namespace backend24.Services.DataProcessors
 		/// <param name="provider">Raw temperature data provider, see <seealso cref="DataProcessorBase{T1, T2}.DataProcessorBase(IDataProvider{T1})"/></param>
 		/// <param name="minTemp">The minimum registered temperature, corresponds to 0 in the raw range</param>
 		/// <param name="maxTemp">The maximum registered temperature, corresponds to 1 in the raw range</param>
-		public TemperatureScaleProcessor(IDataProvider<float> provider, float minTemp, float maxTemp) : base(provider) {
+		public TemperatureScaleProcessor([FromKeyedServices(ServiceKeys.TemperatureProvider)]IDataProvider<float> provider, float minTemp, float maxTemp) : base(provider) {
 			_minTemp = minTemp;
 			_maxTemp = maxTemp;
 		}
