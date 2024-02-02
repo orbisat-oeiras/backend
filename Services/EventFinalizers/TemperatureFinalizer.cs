@@ -10,8 +10,8 @@ namespace backend24.Services.EventFinalizers
 	{
 		public TemperatureFinalizer([FromKeyedServices(ServiceKeys.TemperatureScaleProcessor)]IDataProvider<float> provider) : base(provider) { }
 
-		protected override EventData<(string, float)> Process(EventData<float> data) {
-			return new EventData<(string, float)> {
+		protected override EventData<(string, object)> Process(EventData<float> data) {
+			return new EventData<(string, object)> {
 				DataStamp = data.DataStamp,
 				Data = ("primary/temperature", data.Data),
 			};
