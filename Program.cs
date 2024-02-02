@@ -3,10 +3,6 @@ using backend24.Services.DataProcessors;
 using backend24.Services.DataProviders;
 using backend24.Services.EventFinalizers;
 
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging.Console;
-
 namespace backend24
 {
 	public class Program
@@ -19,16 +15,19 @@ namespace backend24
 			builder.Logging.AddConsole();
 
 			// Add services to the container.
-			// Register internal services
+			// Register internal services, using keyed services
 			builder.Services
 				.AddSingleton<Random>()
 				.AddKeyedSingleton<IDataProvider<float>, RandomProvider>(ServiceKeys.TemperatureProvider)
-				.AddKeyedSingleton<IDataProvider<float>, TemperatureScaleProcessor>(ServiceKeys.TemperatureScaleProcessor, (serviceProvider, key) => {
+				.AddKeyedSingleton<IDataProvider<float>, TemperatureScaleProcessor>(ServiceKeys.TemperatureScaleProcessor, (serviceProvider, _) => {
 					var tempProviderService = serviceProvider.GetKeyedService<IDataProvider<float>>(ServiceKeys.TemperatureProvider)
 							   ?? throw new NullReferenceException($"Missing service of type {typeof(IDataProvider<float>)} with key {nameof(ServiceKeys.TemperatureProvider)}");
 					return new TemperatureScaleProcessor(tempProviderService, 0, 100);
 				})
-				.AddSingleton<EventFinalizerBase<object>, TemperatureFinalizer>();
+				.AddSingleton<TemperatureFinalizer>()
+				.AddSingleton(provider => {
+					return (IFinalizedProvider)provider.GetRequiredService<TemperatureFinalizer>();
+				});
 
 			// This will register all classes annotated with ApiController
 			builder.Services.AddControllers();
