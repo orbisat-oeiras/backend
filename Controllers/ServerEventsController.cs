@@ -25,15 +25,35 @@ namespace backend24.Controllers
 			_logger.LogInformation("DI provided {evtFinalizerCount} event finalizers.", _eventFinalizers.Count().ToString());
 		}
 
+		/// <summary>
+		/// Provide a GET endpoint for connecting to the SSE channel
+		/// </summary>
+		/// <returns>Good question</returns>
 		[HttpGet()]
 		public async Task SSE() {
-			Response.Headers["Content-Type"] = "text/event-stream";
-			Response.Headers["Cache-Control"] = "no-cache";
-			Response.Headers["Connection"] = "keep-alive";
+			// Set the response headers. This tells the client we're initiating SSE
+			Response.Headers.ContentType = "text/event-stream";
+			Response.Headers.CacheControl = "no-cache";
+			Response.Headers.Connection = "keep-alive";
 
-			while(true) {
-				await Response.WriteAsync($"data: Controller at {DateTime.Now}\r\r");
-				await Response.Body.FlushAsync();
+            foreach (var eventFinalizer in _eventFinalizers)
+            {
+				// Subscribe to finalizers
+				eventFinalizer.OnDataProvided += async payload => {
+					_logger.LogInformation("Sending event provided by {evtFinalizerType}.", eventFinalizer.GetType().Name);
+					_logger.LogDebug("Tag: {tag}\nContent: {content}", payload.Data.tag, payload.Data.content);
+					// Send the tagged event in a properly formatted way
+					await Response.WriteAsync($"event: {payload.Data.tag}\n");
+					await Response.WriteAsync($"data: ");
+					// Convert the content to JSON
+					await Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(payload.Data.content));
+					await Response.WriteAsync("\n\n");
+					await Response.Body.FlushAsync();
+				};
+            }
+
+			// Keep the server alive
+            while (true) {
 				await Task.Delay(1000);
 			}
 		}

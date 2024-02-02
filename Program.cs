@@ -48,6 +48,9 @@ namespace backend24
 			app.UseAuthorization(); // TODO: Research this - is it necessary?
 			app.MapControllers();
 
+			// Start the providers
+			(app.Services.GetKeyedService<IDataProvider<float>>(ServiceKeys.TemperatureProvider) as RandomProvider)?.Start(1000);
+
 			// Start the app.
 			app.Run();
 		}
