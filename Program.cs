@@ -1,3 +1,4 @@
+using backend24.Extensions;
 using backend24.Services;
 using backend24.Services.DataProcessors;
 using backend24.Services.DataProviders;
@@ -19,15 +20,8 @@ namespace backend24
 			builder.Services
 				.AddSingleton<Random>()
 				.AddKeyedSingleton<IDataProvider<float>, RandomProvider>(ServiceKeys.TemperatureProvider)
-				.AddKeyedSingleton<IDataProvider<float>, TemperatureScaleProcessor>(ServiceKeys.TemperatureScaleProcessor, (serviceProvider, _) => {
-					var tempProviderService = serviceProvider.GetKeyedService<IDataProvider<float>>(ServiceKeys.TemperatureProvider)
-							   ?? throw new NullReferenceException($"Missing service of type {typeof(IDataProvider<float>)} with key {nameof(ServiceKeys.TemperatureProvider)}");
-					return new TemperatureScaleProcessor(tempProviderService, 0, 100);
-				})
-				.AddSingleton<TemperatureFinalizer>()
-				.AddSingleton(provider => {
-					return (IFinalizedProvider)provider.GetRequiredService<TemperatureFinalizer>();
-				});
+				.AddKeyedSingleton<IDataProvider<float>, TemperatureScaleProcessor>(ServiceKeys.TemperatureScaleProcessor, (serviceProvider, _) => ActivatorUtilities.CreateInstance<TemperatureScaleProcessor>(serviceProvider, 0.0f, 100.0f))
+				.AddFinalizer<TemperatureFinalizer>();
 
 			// This will register all classes annotated with ApiController
 			builder.Services.AddControllers();
