@@ -16,9 +16,14 @@ namespace backend24.Controllers
 	{
 		// Logger provided by DI, used for printing information to all logging providers at once
 		private readonly ILogger<ServerEventsController> _logger;
-		// List of registered event finalizers, which provided ready-to-send events
+		// List of registered event finalizers, which provide ready-to-send events
 		private readonly IEnumerable<IFinalizedProvider> _eventFinalizers;
 
+		/// <summary>
+		/// Create a new instance of ServerEventsController
+		/// </summary>
+		/// <param name="logger"></param>
+		/// <param name="eventFinalizers"></param>
 		public ServerEventsController(ILogger<ServerEventsController> logger, IEnumerable<IFinalizedProvider> eventFinalizers) { 
 			_logger = logger;
 			_eventFinalizers = eventFinalizers;
@@ -31,7 +36,7 @@ namespace backend24.Controllers
 		/// <returns>Good question</returns>
 		[HttpGet()]
 		public async Task SSE() {
-			// Set the response headers. This tells the client we're initiating SSE
+			// Set the response headers; this tells the client we're initiating SSE
 			Response.Headers.ContentType = "text/event-stream";
 			Response.Headers.CacheControl = "no-cache";
 			Response.Headers.Connection = "keep-alive";
@@ -40,8 +45,10 @@ namespace backend24.Controllers
             {
 				// Subscribe to finalizers
 				eventFinalizer.OnDataProvided += async payload => {
-					_logger.LogInformation("Sending event provided by {evtFinalizerType}.", eventFinalizer.GetType().Name);
-					_logger.LogDebug("Tag: {tag}\nContent: {content}", payload.Data.tag, payload.Data.content);
+					// Leaving these here just in case...
+					//_logger.LogInformation("Sending event provided by {evtFinalizerType}.", eventFinalizer.GetType().Name);
+					//_logger.LogDebug("Tag: {tag}\nContent: {content}", payload.Data.tag, payload.Data.content);
+
 					// Send the tagged event in a properly formatted way
 					await Response.WriteAsync($"event: {payload.Data.tag}\n");
 					await Response.WriteAsync($"data: ");
@@ -53,6 +60,7 @@ namespace backend24.Controllers
             }
 
 			// Keep the server alive
+			// This feels very dodgy
             while (true) {
 				await Task.Delay(1000);
 			}
