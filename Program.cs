@@ -1,3 +1,4 @@
+using System.IO.Ports;
 using backend24.Extensions;
 using backend24.Services;
 using backend24.Services.DataProcessors;
@@ -15,13 +16,23 @@ namespace backend24
 			builder.Logging.ClearProviders();
 			builder.Logging.AddConsole();
 
+			// Get the name of the serial port where data is arriving
+			Console.WriteLine("Enter the name of the serial port where the APC220 module is connected.\nAvailable ports are:");
+			Console.Write(string.Concat(SerialPort.GetPortNames().Select(x => "\t" + x + "\n")) + "> ");
+			string serialPortName = Console.ReadLine()!;
+
 			// Add services to the container.
 			// Register internal services, using keyed services
 			builder.Services
 				.AddSingleton<Random>()
 				.AddKeyedSingleton<IDataProvider<float>, RandomProvider>(ServiceKeys.TemperatureProvider)
-				.AddKeyedSingleton<IDataProvider<float>, TemperatureScaleProcessor>(ServiceKeys.TemperatureScaleProcessor, (serviceProvider, _) => ActivatorUtilities.CreateInstance<TemperatureScaleProcessor>(serviceProvider, 0.0f, 100.0f))
-				.AddFinalizer<TemperatureFinalizer>();
+				.AddKeyedSingleton<IDataProvider<float>, TemperatureScaleProcessor>(ServiceKeys.TemperatureScaleProcessor,
+					(serviceProvider, _) => ActivatorUtilities.CreateInstance<TemperatureScaleProcessor>(serviceProvider, 0.0f, 100.0f))
+				.AddFinalizer<TemperatureFinalizer>()
+				// HACK: auto-activate for testing purposes only
+				.AddActivatedKeyedSingleton<IDataProvider<string[]>, SerialProvider>(ServiceKeys.SerialProvider,
+					(serviceProvider, _) => ActivatorUtilities.CreateInstance<SerialProvider>(serviceProvider, serialPortName, 19200, Parity.None));
+
 
 			// This will register all classes annotated with ApiController
 			builder.Services.AddControllers();
