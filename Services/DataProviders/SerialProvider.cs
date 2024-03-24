@@ -10,6 +10,18 @@ namespace backend24.Services.DataProviders
 	/// </summary>
 	public sealed class SerialProvider : IDataProvider<string[]>, IDisposable
 	{
+		/// <summary>
+		/// Represent the index of each data piece in the list provided by a SerialProvider.
+		/// </summary>
+		/// <remarks>
+		/// This enum must be updated to match the formatting of the data sent by the Arduino.
+		/// </remarks>
+		enum DataIndexes {
+			Timestamp = 0,
+			Pressure = 1,
+			Temperature = 2
+		}
+
 		public event Action<EventData<string[]>>? OnDataProvided;
 
 		// Logger provided by DI, used for printing information to all logging providers at once
@@ -64,6 +76,9 @@ namespace backend24.Services.DataProviders
 		private EventData<string[]> WrapInEventData(string message) {
 			// Separate values
 			string[] data = message.Split(':').Select(x => x.Trim().Trim('[', ']', ';')).ToArray();
+			if(data.Length != Enum.GetNames<DataIndexes>().Length ) {
+				_logger.LogWarning("Received data doesn't match expected formatting. This can lead to erroneous behaviour. Please update {DataIndexes}", nameof(DataIndexes));
+			}
 			// Wrap data
 			return new EventData<string[]> {
 				DataStamp = new DataStamp {
