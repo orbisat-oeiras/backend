@@ -25,10 +25,6 @@ namespace backend24
 			// Add services to the container.
 			// Register internal services, using keyed services
 			builder.Services
-				//.AddSingleton<Random>()
-				//.AddKeyedSingleton<IDataProvider<float>, RandomProvider>(ServiceKeys.TemperatureProvider)
-				//.AddKeyedSingleton<IDataProvider<float>, TemperatureScaleProcessor>(ServiceKeys.TemperatureScaleProcessor,
-					//(serviceProvider, _) => ActivatorUtilities.CreateInstance<TemperatureScaleProcessor>(serviceProvider, 0.0f, 100.0f))
 				.AddKeyedSingleton<IDataProvider<string[]>, SerialProvider>(ServiceKeys.SerialProvider,
 					(serviceProvider, _) => ActivatorUtilities.CreateInstance<SerialProvider>(serviceProvider, serialPortName, 19200, Parity.None))
 				.AddKeyedSingleton<IDataProvider<float>, PressureExtractor>(ServiceKeys.PressureExtractor)
@@ -58,9 +54,6 @@ namespace backend24
 			app.UseHttpsRedirection();
 			app.UseAuthorization(); // TODO: Research this - is it necessary?
 			app.MapControllers();
-
-			// Start the providers
-			(app.Services.GetKeyedService<IDataProvider<float>>(ServiceKeys.TemperatureProvider) as RandomProvider)?.Start(1000);
 
 			// Start the app.
 			app.Run();
