@@ -6,6 +6,7 @@
 		TemperatureScaleProcessor,
 		SerialProvider,
 		PressureExtractor,
-		TemperatureExtractor
+		TemperatureExtractor,
+		AltitudeExtractor
     }
 }
