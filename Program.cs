@@ -33,8 +33,10 @@ namespace backend24
 					(serviceProvider, _) => ActivatorUtilities.CreateInstance<SerialProvider>(serviceProvider, serialPortName, 19200, Parity.None))
 				.AddKeyedSingleton<IDataProvider<float>, PressureExtractor>(ServiceKeys.PressureExtractor)
 				.AddKeyedSingleton<IDataProvider<float>, TemperatureExtractor>(ServiceKeys.TemperatureExtractor)
+				.AddKeyedSingleton<IDataProvider<float>, AltitudeExtractor>(ServiceKeys.AltitudeExtractor)
 				.AddFinalizer<PressureFinalizer>()
 				.AddFinalizer<TemperatureFinalizer>()
+				.AddFinalizer<AltitudeFinalizer>()
 				;
 
 
