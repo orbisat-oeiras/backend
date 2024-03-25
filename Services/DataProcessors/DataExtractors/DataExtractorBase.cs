@@ -10,9 +10,10 @@ namespace backend24.Services.DataProcessors.DataExtractors
 	public abstract class DataExtractorBase<T> : DataProcessorBase<string[], T>
 	{
 		/// <summary>
-		/// Index of the required data piece in the array provided by SerialProvider
+		/// Indexes of the required data pieces in the array provided by SerialProvider
 		/// </summary>
-		protected SerialProvider.DataIndexes _sourceIndex;
+		protected SerialProvider.DataIndexes[] _sourceIndexes = [];
+
 		protected DataExtractorBase([FromKeyedServices(ServiceKeys.SerialProvider)]IDataProvider<string[]> provider) : base(provider) {
 		}
 
@@ -21,11 +22,12 @@ namespace backend24.Services.DataProcessors.DataExtractors
 		/// </summary>
 		/// <param name="data">Data piece as a string</param>
 		/// <returns>Data piece as <typeparamref name="T"/></returns>
-		protected abstract T Convert(string data);
+		protected abstract T Convert(IEnumerable<string> data);
 		protected override EventData<T> Process(EventData<string[]> data) {
 			return new EventData<T>() {
 				DataStamp = data.DataStamp,
-				Data = Convert(data.Data[(int)_sourceIndex])
+				// Select a subset of the data pieces
+				Data = Convert(_sourceIndexes.Select(x => data.Data[(int)x]))
 			};
 		}
 	}

@@ -9,9 +9,9 @@ namespace backend24.Services.DataProcessors.DataExtractors
 	{
 		public PressureExtractor([FromKeyedServices(ServiceKeys.SerialProvider)] IDataProvider<string[]> provider) : base(provider) {
 			// Extract pressure data
-			_sourceIndex = SerialProvider.DataIndexes.Pressure;
+			_sourceIndexes = [SerialProvider.DataIndexes.Pressure];
 		}
 
-		protected override float Convert(string data) => float.Parse(data);
+		protected override float Convert(IEnumerable<string> data) => float.Parse(data.First());
 	}
 }

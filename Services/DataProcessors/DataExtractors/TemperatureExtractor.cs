@@ -9,9 +9,9 @@ namespace backend24.Services.DataProcessors.DataExtractors
 	{
 		public TemperatureExtractor([FromKeyedServices(ServiceKeys.SerialProvider)] IDataProvider<string[]> provider) : base(provider) {
 			// Extract temperature data
-			_sourceIndex = SerialProvider.DataIndexes.Temperature;
+			_sourceIndexes = [SerialProvider.DataIndexes.Temperature];
 		}
 
-		protected override float Convert(string data) => float.Parse(data);
+		protected override float Convert(IEnumerable<string> data) => float.Parse(data.First());
 	}
 }
