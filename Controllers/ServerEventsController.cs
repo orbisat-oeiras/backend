@@ -55,6 +55,8 @@ namespace backend24.Controllers
 					await Response.WriteAsync($"data: ");
 					// Convert the content to JSON
 					await Response.WriteJSONAsync(payload.Data.content);
+					await Response.WriteAsync("@");
+					await Response.WriteJSONAsync(payload.DataStamp);
 					await Response.WriteAsync("\n\n");
 					await Response.Body.FlushAsync();
 				};
