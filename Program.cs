@@ -2,6 +2,7 @@ using System.IO.Ports;
 using backend24.Extensions;
 using backend24.Services;
 using backend24.Services.DataProcessors;
+using backend24.Services.DataProcessors.DataExtractors;
 using backend24.Services.DataProviders;
 using backend24.Services.EventFinalizers;
 
@@ -24,14 +25,18 @@ namespace backend24
 			// Add services to the container.
 			// Register internal services, using keyed services
 			builder.Services
-				.AddSingleton<Random>()
-				.AddKeyedSingleton<IDataProvider<float>, RandomProvider>(ServiceKeys.TemperatureProvider)
-				.AddKeyedSingleton<IDataProvider<float>, TemperatureScaleProcessor>(ServiceKeys.TemperatureScaleProcessor,
-					(serviceProvider, _) => ActivatorUtilities.CreateInstance<TemperatureScaleProcessor>(serviceProvider, 0.0f, 100.0f))
-				.AddFinalizer<TemperatureFinalizer>()
+				//.AddSingleton<Random>()
+				//.AddKeyedSingleton<IDataProvider<float>, RandomProvider>(ServiceKeys.TemperatureProvider)
+				//.AddKeyedSingleton<IDataProvider<float>, TemperatureScaleProcessor>(ServiceKeys.TemperatureScaleProcessor,
+					//(serviceProvider, _) => ActivatorUtilities.CreateInstance<TemperatureScaleProcessor>(serviceProvider, 0.0f, 100.0f))
 				// HACK: auto-activate for testing purposes only
-				.AddActivatedKeyedSingleton<IDataProvider<string[]>, SerialProvider>(ServiceKeys.SerialProvider,
-					(serviceProvider, _) => ActivatorUtilities.CreateInstance<SerialProvider>(serviceProvider, serialPortName, 19200, Parity.None));
+				.AddKeyedSingleton<IDataProvider<string[]>, SerialProvider>(ServiceKeys.SerialProvider,
+					(serviceProvider, _) => ActivatorUtilities.CreateInstance<SerialProvider>(serviceProvider, serialPortName, 19200, Parity.None))
+				.AddKeyedSingleton<IDataProvider<float>, PressureExtractor>(ServiceKeys.PressureExtractor)
+				.AddKeyedSingleton<IDataProvider<float>, TemperatureExtractor>(ServiceKeys.TemperatureExtractor)
+				.AddFinalizer<PressureFinalizer>()
+				.AddFinalizer<TemperatureFinalizer>()
+				;
 
 
 			// This will register all classes annotated with ApiController
