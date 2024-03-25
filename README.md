@@ -8,6 +8,7 @@
 - Services: Modular classes implementing internal functionality
     - ``DataProviders``: classes responsible for emitting data. All data providers must implement ``IDataProvider``. A consumer class can subscribe to a provider's ``OnDataProvided`` to be notified whenever new data is available.
         - ``RandomProvider``: provides random floats on a configurable interval.
+        - ``SerialProvider``: provides string arrays from a serial port.
     - ``DataProcessors``: classes responsible for transforming data. Notably, every processor both subscribes to a provider to get new data to transform, and is itself a provider, emiting a new event after it has transformed the data.
     - ``EventFinalizers``: classes responsible for finalizing an event, i.e., collecting the necessary data and tagging it properly. Finalizers must be ``IDataProviders`` (though they'll usually be processors) marked with ``EventFinalizerAttribute``.
         - ``PrimaryMissionFinalizer``: responsible for providing client-ready data related to the primary mission, provides the following tagged events:
