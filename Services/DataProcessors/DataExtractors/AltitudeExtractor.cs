@@ -2,6 +2,9 @@
 
 namespace backend24.Services.DataProcessors.DataExtractors
 {
+	/// <summary>
+	/// Computes altitude from pressure and temperature data
+	/// </summary>
 	public class AltitudeExtractor : DataExtractorBase<float>
 	{
 		public AltitudeExtractor([FromKeyedServices(ServiceKeys.SerialProvider)] IDataProvider<string[]> provider) : base(provider) {
