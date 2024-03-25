@@ -4,7 +4,8 @@
 	{
 		TemperatureProvider,
 		TemperatureScaleProcessor,
-		TemperatureFinalizer,
-		SerialProvider
+		SerialProvider,
+		PressureExtractor,
+		TemperatureExtractor
     }
 }
