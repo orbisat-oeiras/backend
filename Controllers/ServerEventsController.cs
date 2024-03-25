@@ -1,8 +1,4 @@
-﻿using System.Reflection;
-
-using backend24.Extensions;
-using backend24.Services.DataProviders;
-using backend24.Services.EventFinalizers;
+﻿using backend24.Extensions;
 
 using Microsoft.AspNetCore.Mvc;
 

@@ -4,7 +4,7 @@ using backend24.Services.DataProviders;
 namespace backend24.Services.EventFinalizers
 {
 	/// <summary>
-	/// Finalizes a tempreature event, tagged with "primary/temperature".
+	/// Finalizes a temperature event, tagged with "primary/temperature".
 	/// </summary>
 	public class TemperatureFinalizer : EventFinalizerBase<float>
 	{

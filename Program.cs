@@ -1,7 +1,7 @@
 using System.IO.Ports;
+
 using backend24.Extensions;
 using backend24.Services;
-using backend24.Services.DataProcessors;
 using backend24.Services.DataProcessors.DataExtractors;
 using backend24.Services.DataProviders;
 using backend24.Services.EventFinalizers;
@@ -29,7 +29,6 @@ namespace backend24
 				//.AddKeyedSingleton<IDataProvider<float>, RandomProvider>(ServiceKeys.TemperatureProvider)
 				//.AddKeyedSingleton<IDataProvider<float>, TemperatureScaleProcessor>(ServiceKeys.TemperatureScaleProcessor,
 					//(serviceProvider, _) => ActivatorUtilities.CreateInstance<TemperatureScaleProcessor>(serviceProvider, 0.0f, 100.0f))
-				// HACK: auto-activate for testing purposes only
 				.AddKeyedSingleton<IDataProvider<string[]>, SerialProvider>(ServiceKeys.SerialProvider,
 					(serviceProvider, _) => ActivatorUtilities.CreateInstance<SerialProvider>(serviceProvider, serialPortName, 19200, Parity.None))
 				.AddKeyedSingleton<IDataProvider<float>, PressureExtractor>(ServiceKeys.PressureExtractor)

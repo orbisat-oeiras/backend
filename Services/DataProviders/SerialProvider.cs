@@ -1,6 +1,5 @@
 ﻿using backend24.Models;
 
-using System;
 using System.IO.Ports;
 
 namespace backend24.Services.DataProviders
@@ -42,6 +41,7 @@ namespace backend24.Services.DataProviders
 			// are, and am very likely to ever change them in the radio modules
 			// configuration, so it's most probably (read hopefully) fine to keep
 			// them at the default value.
+			// TODO: research about choosing a good baud rate
 			_serialPort = new SerialPort(portName, baudRate, parity) {
 				// I have no clue what a reasonable value for this is
 				ReadTimeout = 500,
@@ -72,7 +72,7 @@ namespace backend24.Services.DataProviders
 		/// Wrap a message from a serial port in an EventData object
 		/// </summary>
 		/// <param name="message">The message, formatted as "[<data>]:[<data>]:...;"</param>
-		/// <returns>An EventData object containign the message, split into individual pieces</returns>
+		/// <returns>An EventData object containing the message, split into individual pieces</returns>
 		private EventData<string[]> WrapInEventData(string message) {
 			// Separate values
 			string[] data = message.Split(':').Select(x => x.Trim().Trim('[', ']', ';')).ToArray();

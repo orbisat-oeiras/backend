@@ -8,7 +8,7 @@ namespace backend24.Models
 	public readonly struct GPSCoords
 	{
 		/// <summary>
-		/// Vertical angle, measured with respoect to the equator.
+		/// Vertical angle, measured with respect to the equator.
 		/// -90º is the south pole, 0º is the equator and 90º is the north pole.
 		/// </summary>
 		[Range(-90,90)]

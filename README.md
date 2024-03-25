@@ -11,19 +11,15 @@
         - ``SerialProvider``: provides string arrays from a serial port.
     - ``DataProcessors``: classes responsible for transforming data. Notably, every processor both subscribes to a provider to get new data to transform, and is itself a provider, emiting a new event after it has transformed the data.
         - ``DataExtractors``: classes responsible for extracting a specific piece of data from ``SerialProvider`` data.
-    - ``EventFinalizers``: classes responsible for finalizing an event, i.e., collecting the necessary data and tagging it properly. Finalizers must be ``IDataProviders`` (though they'll usually be processors) marked with ``EventFinalizerAttribute``.
-        - ``PrimaryMissionFinalizer``: responsible for providing client-ready data related to the primary mission, provides the following tagged events:
-            - ``primary/temperature``
-            - ``primary/pressure``
-            - ``primary/altitude``
-        - ``SecondaryMissionFinalizer``: responsible for providing client-ready data related to the secondary mission, provides the following tagged events:
-            - ``api/secondary/raw``
-            - ``api/seconddary/ndvi``
-        - ``GeneralFinalizer``: responsible for providing client-ready data which ins't related to any particular mission, provides the following tagged events:
-            - ``general/time``
-            - ``general/acceleration``
-            - ``general/position``
-            - ``general/raw``
+    - ``EventFinalizers``: classes responsible for finalizing an event, i.e., collecting the necessary data and tagging it properly. Finalizers must be ``IDataProviders`` (though they'll usually be processors) marked with ``EventFinalizerAttribute``. Each finalizer is responsible for only one tagged events. The following tags are (or will be) provided, along with their respective finalizers.
+        - ``primary/pressure`` by ``PressureFinalizer``
+        - ``primary/temperature`` by ``TemperatureFinalizer``
+        - ``primary/altitude`` by ``AltitudeFinalizer``
+        - ``secondary/raw``
+        - ``seconddary/ndvi``
+        - ``general/acceleration``
+        - ``general/position``
+        - ``general/raw``
 
 ## Data flow
 - All data is encapsulated in ``EventData`` objects, which pack the actual data together with a ``DataStamp``, which in turn contains mandatory information (like timestamp and GPS coordinates)
