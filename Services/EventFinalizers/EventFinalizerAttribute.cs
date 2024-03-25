@@ -8,6 +8,7 @@
 	/// The compiler allows classes besides EventFinalizerBase to use this attribute,
 	/// which may result in runtime errors.
 	/// TODO: find a way to improve this, perhaps with a code analyzer.
+	/// TODO: I think this is useless...
 	/// </remarks>
 	[System.AttributeUsage(AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
     sealed class EventFinalizerAttribute : Attribute
