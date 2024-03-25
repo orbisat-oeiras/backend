@@ -16,7 +16,7 @@ namespace backend24.Services.DataProviders
 		/// <remarks>
 		/// This enum must be updated to match the formatting of the data sent by the Arduino.
 		/// </remarks>
-		enum DataIndexes {
+		public enum DataIndexes {
 			Timestamp = 0,
 			Pressure = 1,
 			Temperature = 2
