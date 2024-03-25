@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 
+using backend24.Extensions;
 using backend24.Services.DataProviders;
 using backend24.Services.EventFinalizers;
 
@@ -53,7 +54,7 @@ namespace backend24.Controllers
 					await Response.WriteAsync($"event: {payload.Data.tag}\n");
 					await Response.WriteAsync($"data: ");
 					// Convert the content to JSON
-					await Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(payload.Data.content));
+					await Response.WriteJSONAsync(payload.Data.content);
 					await Response.WriteAsync("\n\n");
 					await Response.Body.FlushAsync();
 				};
