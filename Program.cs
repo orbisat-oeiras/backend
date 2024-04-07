@@ -25,7 +25,7 @@ namespace backend24
 			// Add services to the container.
 			// Register internal services, using keyed services
 			builder.Services
-				.AddKeyedSingleton<IDataProvider<string[]>, SerialProvider>(ServiceKeys.SerialProvider,
+				.AddKeyedSingleton<IDataProvider<Dictionary<SerialProvider.DataLabel, string>>, SerialProvider>(ServiceKeys.SerialProvider,
 					(serviceProvider, _) => ActivatorUtilities.CreateInstance<SerialProvider>(serviceProvider, serialPortName, 19200, Parity.None))
 				.AddKeyedSingleton<IDataProvider<float>, PressureExtractor>(ServiceKeys.PressureExtractor)
 				.AddKeyedSingleton<IDataProvider<float>, TemperatureExtractor>(ServiceKeys.TemperatureExtractor)

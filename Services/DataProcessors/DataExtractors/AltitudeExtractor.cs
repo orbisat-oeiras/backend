@@ -7,8 +7,8 @@ namespace backend24.Services.DataProcessors.DataExtractors
 	/// </summary>
 	public class AltitudeExtractor : DataExtractorBase<float>
 	{
-		public AltitudeExtractor([FromKeyedServices(ServiceKeys.SerialProvider)] IDataProvider<string[]> provider) : base(provider) {
-			_sourceIndexes = [SerialProvider.DataIndexes.Pressure, SerialProvider.DataIndexes.Temperature];
+		public AltitudeExtractor([FromKeyedServices(ServiceKeys.SerialProvider)] IDataProvider<Dictionary<SerialProvider.DataLabel, string>> provider) : base(provider) {
+			_sourceIndexes = [SerialProvider.DataLabel.Pressure, SerialProvider.DataLabel.Temperature];
 		}
 
 		protected override float Convert(IEnumerable<string> data) {
