@@ -38,6 +38,8 @@ namespace backend24
 				.AddFinalizer<AltitudeGPSFinalizer>()
 				.AddKeyedSingleton<IDataProvider<float>, AltitudeDeltaProcessor>(ServiceKeys.AltitudeDeltaProcessor)
 				.AddFinalizer<AltitudeDeltaFinalizer>()
+				.AddKeyedSingleton<IDataProvider<float>, VelocityProcessor>(ServiceKeys.VelocityProcessor)
+				.AddFinalizer<VelocityFinalizer>()
 				;
 
 
