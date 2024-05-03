@@ -38,9 +38,8 @@ namespace backend24.Services.DataProviders
         private readonly Dictionary<DataLabel, int> _schema;
 
         private string _buffer = "";
-		private Thread _collThread;
         
-		private System.Timers.Timer _timer;
+		private readonly System.Timers.Timer _timer;
 
         /// <summary>
         /// Create a new instance of SerialProvider
@@ -79,23 +78,12 @@ namespace backend24.Services.DataProviders
             // Open the port
             _serialPort.Open();
 			// Set up event listeners
-			// _serialPort.DataReceived += HandleDataReceived;
-			//_collThread = new Thread(CollectionThread);
-			//_collThread.Start();
-            _timer = new System.Timers.Timer(500);
-            _timer.AutoReset = true;
-            _timer.Elapsed += HandleDataReceived;
+			_timer = new System.Timers.Timer(500) {
+				AutoReset = true
+			};
+			_timer.Elapsed += HandleDataReceived;
             _timer.Start();
         }
-
-        private void CollectionThread(){
-            while(true) {
-				lock(_buffer) {
-					_buffer += _serialPort.ReadExisting();
-				}
-				Thread.Sleep(50);
-			}
-		}
 		
 		/// <summary>
         /// Handle data being received on the serial port
@@ -108,7 +96,7 @@ namespace backend24.Services.DataProviders
             _buffer += _serialPort.ReadExisting();
             _buffer = _buffer.TrimStart();
 			while(_buffer.Contains('\n')){
-                int idx = _buffer.IndexOf("\n");
+                int idx = _buffer.IndexOf('\n');
 				string line = _buffer[..idx];
                 _buffer = _buffer.Remove(0, line.Length);
                 HandleLineReceived(line);
