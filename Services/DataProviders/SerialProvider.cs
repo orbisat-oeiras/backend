@@ -184,18 +184,22 @@ namespace backend24.Services.DataProviders
             string[] data = message.Split(':').Select(x => x.Trim().Trim('[', ']', ';')).ToArray();
             // Build dictionary
             Dictionary<DataLabel, string> dict = _schema.Select(x => (x.Key, data[x.Value])).ToDictionary();
-            // Wrap data
-            return new EventData<Dictionary<DataLabel, string>>
+            float latitude = 0f, longitude = 0f, altitude = 0f;
+            if(dict[DataLabel.Latitude] != "nan") latitude = float.Parse(dict[DataLabel.Latitude]);
+			if(dict[DataLabel.Longitude] != "nan") longitude = float.Parse(dict[DataLabel.Longitude]);
+			if(dict[DataLabel.Altitude] != "nan") altitude = float.Parse(dict[DataLabel.Altitude]);
+			// Wrap data
+			return new EventData<Dictionary<DataLabel, string>>
             {
                 DataStamp = new DataStamp
                 {
-                    Timestamp = int.Parse(data[0]),
+                    Timestamp = int.Parse(dict[DataLabel.Timestamp]),
                     // TODO: get this info from message as well
                     Coordinates = new GPSCoords
                     {
-                        Latitude = 0,
-                        Longitude = 0,
-                        Altitude = 0
+                        Latitude = latitude,
+                        Longitude = longitude,
+                        Altitude = altitude
                     }
                 },
                 Data = dict
