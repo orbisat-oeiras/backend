@@ -6,6 +6,7 @@
 		PressureExtractor,
 		TemperatureExtractor,
 		AltitudeExtractor,
-		AltitudeGPSExtractor
+		AltitudeGPSExtractor,
+		AltitudeDeltaProcessor
     }
 }

@@ -2,6 +2,7 @@ using System.IO.Ports;
 
 using backend24.Extensions;
 using backend24.Services;
+using backend24.Services.DataProcessors;
 using backend24.Services.DataProcessors.DataExtractors;
 using backend24.Services.DataProviders;
 using backend24.Services.EventFinalizers;
@@ -35,6 +36,8 @@ namespace backend24
 				.AddFinalizer<AltitudeFinalizer>()
 				.AddKeyedSingleton<IDataProvider<float>, AltitudeGPSExtractor>(ServiceKeys.AltitudeGPSExtractor)
 				.AddFinalizer<AltitudeGPSFinalizer>()
+				.AddKeyedSingleton<IDataProvider<float>, AltitudeDeltaProcessor>(ServiceKeys.AltitudeDeltaProcessor)
+				.AddFinalizer<AltitudeDeltaFinalizer>()
 				;
 
 
