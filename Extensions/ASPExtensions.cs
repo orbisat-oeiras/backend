@@ -1,4 +1,6 @@
-﻿namespace backend24.Extensions
+﻿using System.Text.Json;
+
+namespace backend24.Extensions
 {
 	public static class ASPExtensions
 	{
@@ -22,11 +24,13 @@
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
 		public static Task WriteJSONAsync(this HttpResponse response, object value, CancellationToken cancellationToken = default) {
+			JsonSerializerOptions opts = new JsonSerializerOptions { NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals };
+
 			// WriteAsync does this, so it's done here too
 			ArgumentNullException.ThrowIfNull(response);
 			ArgumentNullException.ThrowIfNull(value);
 
-			return response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(value), cancellationToken);
+			return response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(value, opts), cancellationToken);
 		}
 	}
 }
