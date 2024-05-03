@@ -5,6 +5,7 @@
 		SerialProvider,
 		PressureExtractor,
 		TemperatureExtractor,
-		AltitudeExtractor
+		AltitudeExtractor,
+		AltitudeGPSExtractor
     }
 }

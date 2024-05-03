@@ -28,11 +28,13 @@ namespace backend24
 				.AddKeyedSingleton<IDataProvider<Dictionary<SerialProvider.DataLabel, string>>, SerialProvider>(ServiceKeys.SerialProvider,
 					(serviceProvider, _) => ActivatorUtilities.CreateInstance<SerialProvider>(serviceProvider, serialPortName, 19200, Parity.None))
 				.AddKeyedSingleton<IDataProvider<float>, PressureExtractor>(ServiceKeys.PressureExtractor)
-				.AddKeyedSingleton<IDataProvider<float>, TemperatureExtractor>(ServiceKeys.TemperatureExtractor)
-				.AddKeyedSingleton<IDataProvider<float>, AltitudeExtractor>(ServiceKeys.AltitudeExtractor)
 				.AddFinalizer<PressureFinalizer>()
+				.AddKeyedSingleton<IDataProvider<float>, TemperatureExtractor>(ServiceKeys.TemperatureExtractor)
 				.AddFinalizer<TemperatureFinalizer>()
+				.AddKeyedSingleton<IDataProvider<float>, AltitudeExtractor>(ServiceKeys.AltitudeExtractor)
 				.AddFinalizer<AltitudeFinalizer>()
+				.AddKeyedSingleton<IDataProvider<float>, AltitudeGPSExtractor>(ServiceKeys.AltitudeGPSExtractor)
+				.AddFinalizer<AltitudeGPSFinalizer>()
 				;
 
 
