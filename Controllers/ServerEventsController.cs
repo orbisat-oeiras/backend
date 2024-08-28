@@ -1,5 +1,6 @@
 ﻿using backend24.Extensions;
 
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 
 namespace backend24.Controllers
@@ -9,6 +10,7 @@ namespace backend24.Controllers
 	/// </summary>
 	[ApiController]
 	[Route("api/[action]")]
+	[EnableCors]
 	public class ServerEventsController : ControllerBase
 	{
 		// Logger provided by DI, used for printing information to all logging providers at once

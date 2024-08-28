@@ -2,6 +2,7 @@ using System.IO.Ports;
 
 using backend24.Extensions;
 using backend24.Services;
+using backend24.Services.DataProcessors;
 using backend24.Services.DataProcessors.DataExtractors;
 using backend24.Services.DataProviders;
 using backend24.Services.EventFinalizers;
@@ -28,11 +29,17 @@ namespace backend24
 				.AddKeyedSingleton<IDataProvider<Dictionary<SerialProvider.DataLabel, string>>, SerialProvider>(ServiceKeys.SerialProvider,
 					(serviceProvider, _) => ActivatorUtilities.CreateInstance<SerialProvider>(serviceProvider, serialPortName, 19200, Parity.None))
 				.AddKeyedSingleton<IDataProvider<float>, PressureExtractor>(ServiceKeys.PressureExtractor)
-				.AddKeyedSingleton<IDataProvider<float>, TemperatureExtractor>(ServiceKeys.TemperatureExtractor)
-				.AddKeyedSingleton<IDataProvider<float>, AltitudeExtractor>(ServiceKeys.AltitudeExtractor)
 				.AddFinalizer<PressureFinalizer>()
+				.AddKeyedSingleton<IDataProvider<float>, TemperatureExtractor>(ServiceKeys.TemperatureExtractor)
 				.AddFinalizer<TemperatureFinalizer>()
+				.AddKeyedSingleton<IDataProvider<float>, AltitudeExtractor>(ServiceKeys.AltitudeExtractor)
 				.AddFinalizer<AltitudeFinalizer>()
+				.AddKeyedSingleton<IDataProvider<float>, AltitudeGPSExtractor>(ServiceKeys.AltitudeGPSExtractor)
+				.AddFinalizer<AltitudeGPSFinalizer>()
+				.AddKeyedSingleton<IDataProvider<float>, AltitudeDeltaProcessor>(ServiceKeys.AltitudeDeltaProcessor)
+				.AddFinalizer<AltitudeDeltaFinalizer>()
+				.AddKeyedSingleton<IDataProvider<float>, VelocityProcessor>(ServiceKeys.VelocityProcessor)
+				.AddFinalizer<VelocityFinalizer>()
 				;
 
 
@@ -41,6 +48,8 @@ namespace backend24
 			// Set up Swagger/OpenAPI (learn more at https://aka.ms/aspnetcore/swashbuckle)
 			builder.Services.AddEndpointsApiExplorer();
 			builder.Services.AddSwaggerGen();
+
+			builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 
 			// Build an app from the configuration.
 			var app = builder.Build();
@@ -52,6 +61,7 @@ namespace backend24
 			}
 
 			app.UseHttpsRedirection();
+			app.UseCors();
 			app.UseAuthorization(); // TODO: Research this - is it necessary?
 			app.MapControllers();
 
