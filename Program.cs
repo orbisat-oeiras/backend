@@ -1,11 +1,11 @@
 using System.IO.Ports;
-
 using backend24.Extensions;
 using backend24.Services;
 using backend24.Services.DataProcessors;
 using backend24.Services.DataProcessors.DataExtractors;
 using backend24.Services.DataProviders;
 using backend24.Services.EventFinalizers;
+using NReco.Logging.File;
 
 namespace backend24
 {
@@ -17,7 +17,7 @@ namespace backend24
 			// Reset logging to the console
 			builder.Logging.ClearProviders();
 			builder.Logging.AddConsole();
-
+			builder.Logging.AddFile("Logs/log.txt");
 			// Get the name of the serial port where data is arriving
 			Console.WriteLine("Enter the name of the serial port where the APC220 module is connected.\nAvailable ports are:");
 			Console.Write(string.Concat(SerialPort.GetPortNames().Select(x => "\t" + x + "\n")) + "> ");
@@ -41,7 +41,6 @@ namespace backend24
 				.AddKeyedSingleton<IDataProvider<float>, VelocityProcessor>(ServiceKeys.VelocityProcessor)
 				.AddFinalizer<VelocityFinalizer>()
 				;
-
 
 			// This will register all classes annotated with ApiController
 			builder.Services.AddControllers();
