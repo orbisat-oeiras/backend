@@ -28,13 +28,12 @@ namespace backend24.Controllers
 			_eventFinalizers = eventFinalizers;
 			_logger.LogInformation("DI provided {evtFinalizerCount} event finalizers.", _eventFinalizers.Count().ToString());
 		}
-
 		/// <summary>
 		/// Provide a GET endpoint for connecting to the SSE channel
 		/// </summary>
 		/// <returns>Good question</returns>
 		[HttpGet()]
-		public async Task SSE() {
+		public async Task SSE(CancellationToken cancellationToken = default) {
 			// Set the response headers; this tells the client we're initiating SSE
 			Response.Headers.ContentType = "text/event-stream";
 			Response.Headers.CacheControl = "no-cache";
@@ -61,8 +60,9 @@ namespace backend24.Controllers
             }
 
 			// Keep the server alive
-			// This feels very dodgy
-            while (true) {
+			// This still feels very dodgy
+			
+            while (cancellationToken == default) {
 				await Task.Delay(1000);
 			}
 		}
