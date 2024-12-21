@@ -25,6 +25,7 @@ namespace backend24
 					.Title("Please select the serial port where the [blue]APC220 module[/] is connected.")
 					.PageSize(10)
 					.AddChoices(SerialPort.GetPortNames())
+					.HighlightStyle(new Style(foreground: Color.White, background: Color.Blue))
 			);
 			Console.WriteLine($"Selected port: {serialPortName}");
 			// Add services to the container.
