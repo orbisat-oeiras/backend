@@ -33,7 +33,7 @@ namespace backend24.Controllers
 		/// </summary>
 		/// <returns>Good question</returns>
 		[HttpGet()]
-		public async Task SSE(CancellationToken cancellationToken = default) {
+		public async Task SSE(CancellationToken cancellationToken) {
 			// Set the response headers; this tells the client we're initiating SSE
 			Response.Headers.ContentType = "text/event-stream";
 			Response.Headers.CacheControl = "no-cache";
