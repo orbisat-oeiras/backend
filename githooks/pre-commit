@@ -49,7 +49,7 @@ def exit_on_error(code: int):
 
 
 def get_files() -> list[str] | None:
-    # Get a list of files to be commited
+    # Get a list of files to be committed
     files = subprocess.run(
         ["git", "diff-index", "--cached", "--name-only", "HEAD"], stdout=subprocess.PIPE
     ).stdout

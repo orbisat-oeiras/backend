@@ -1,10 +1,10 @@
-.PHONY: install installhooks installdotnet
+.PHONY: install install_hooks install_dotnet
 
-install: installhooks installdotnet
+install: install_hooks install_dotnet
 
-installhooks:
+install_hooks:
 	cp githooks/* .git/hooks
 	chmod +x .git/hooks/*
 
-installdotnet:
+install_dotnet:
 	dotnet tool restore

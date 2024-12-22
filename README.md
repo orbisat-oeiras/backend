@@ -10,7 +10,7 @@ This will install all the necessary tools and Git hooks to enforce proper style.
 
 ## Project structure
 
-- Controllers: classes derived from `ControlerBase`, implementing API endpoints
+- Controllers: classes derived from `ControllerBase`, implementing API endpoints
   - `ServerEventsController`: responsible for opening an SSE channel and sending tagged data to the client. Provides the following endpoint for subscribing to SSE: `api/sse`. All data sent will be collected from objects marked with `EventFinalizerAttribute`, which will be automatically registered at startup.
 - Models: classes defining data models for the app to work with
   - `GPSCoords`: represents GPS coordinates (latitude, longitude, altitude)
@@ -20,14 +20,14 @@ This will install all the necessary tools and Git hooks to enforce proper style.
   - `DataProviders`: classes responsible for emitting data. All data providers must implement `IDataProvider`. A consumer class can subscribe to a provider's `OnDataProvided` to be notified whenever new data is available.
     - `RandomProvider`: provides random floats on a configurable interval.
     - `SerialProvider`: provides string arrays from a serial port.
-  - `DataProcessors`: classes responsible for transforming data. Notably, every processor both subscribes to a provider to get new data to transform, and is itself a provider, emiting a new event after it has transformed the data.
+  - `DataProcessors`: classes responsible for transforming data. Notably, every processor both subscribes to a provider to get new data to transform, and is itself a provider, emitting a new event after it has transformed the data.
     - `DataExtractors`: classes responsible for extracting a specific piece of data from `SerialProvider` data.
   - `EventFinalizers`: classes responsible for finalizing an event, i.e., collecting the necessary data and tagging it properly. Finalizers must be `IDataProviders` (though they'll usually be processors) marked with `EventFinalizerAttribute`. Each finalizer is responsible for only one tagged events. The following tags are (or will be) provided, along with their respective finalizers.
     - `primary/pressure` by `PressureFinalizer`
     - `primary/temperature` by `TemperatureFinalizer`
     - `primary/altitude` by `AltitudeFinalizer`
     - `secondary/raw`
-    - `seconddary/ndvi`
+    - `secondary/ndvi`
     - `general/acceleration`
     - `general/position`
     - `general/raw`
@@ -41,4 +41,4 @@ This will install all the necessary tools and Git hooks to enforce proper style.
 
 ## Notes and useful things
 
-Most browsers have a limit of 6 connections per domain. Since each SSE endpoint represents a connection that stays open indeterminatly, we have to be very careful when subscribing to SSEs. However, response bodies consist of `data` tags and `event` tags, so we can have a single endpoint which sends all the data. Thus the endpoints specified above become internal spearations which all write to the same endpoint.
+Most browsers have a limit of 6 connections per domain. Since each SSE endpoint represents a connection that stays open indeterminately, we have to be very careful when subscribing to SSEs. However, response bodies consist of `data` tags and `event` tags, so we can have a single endpoint which sends all the data. Thus the endpoints specified above become internal separations which all write to the same endpoint.
