@@ -1,0 +1,24 @@
+name: Run static checks
+description: Runs formatting and style checks
+
+runs:
+  using: composite
+  steps:
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+
+    - name: Restore dependencies
+      shell: bash
+      run: |
+        dotnet restore
+        dotnet tool restore
+
+    - name: Check formatting
+      shell: bash
+      run: dotnet csharpier --check .
+
+    - name: Check style
+      shell: bash
+      run: |
+        dotnet format style backend24.sln --verify-no-changes --verbosity diagnostic
+        dotnet format analyzers backend24.sln --verify-no-changes --verbosity diagnostic

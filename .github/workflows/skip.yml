@@ -1,0 +1,22 @@
+name: Skip unnecessary workflow runs
+
+on:
+  workflow_call:
+    outputs:
+      should_skip:
+        value: ${{jobs.skip.outputs.should_skip}}
+
+jobs:
+  skip:
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{steps.skip_check.outputs.should_skip}}
+
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5
+        with:
+          paths: '["metroidvania/Assets/Scripts/**", "metroidvania/Assets/Tests/**"]'
+          cancel_others: "true"
+          skip_after_successful_duplicate: "true"
+          concurrent_skipping: "same_content_newer"
