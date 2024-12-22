@@ -1,15 +1,16 @@
-﻿using backend24.Models;
-
-using System;
+﻿using System;
 using System.IO.Ports;
 using System.Text.RegularExpressions;
+using backend24.Models;
 
 namespace backend24.Services.DataProviders
 {
     /// <summary>
     /// Provides data read from a serial port.
     /// </summary>
-    public sealed class SerialProvider : IDataProvider<Dictionary<SerialProvider.DataLabel, string>>, IDisposable
+    public sealed class SerialProvider
+        : IDataProvider<Dictionary<SerialProvider.DataLabel, string>>,
+            IDisposable
     {
         /// <summary>
         /// Represent the index of each data piece in the list provided by a SerialProvider.
@@ -27,7 +28,7 @@ namespace backend24.Services.DataProviders
             AccelerationZ,
             Latitude,
             Longitude,
-            Altitude
+            Altitude,
         }
 
         public event Action<EventData<Dictionary<DataLabel, string>>>? OnDataProvided;
@@ -38,8 +39,8 @@ namespace backend24.Services.DataProviders
         private readonly Dictionary<DataLabel, int> _schema;
 
         private string _buffer = "";
-        
-		private readonly System.Timers.Timer _timer;
+
+        private readonly System.Timers.Timer _timer;
 
         /// <summary>
         /// Create a new instance of SerialProvider
@@ -48,20 +49,26 @@ namespace backend24.Services.DataProviders
         /// <param name="baudRate">Baud rate, in bps, of the serial port</param>
         /// <param name="parity">Parity of the serial port</param>
         /// <param name="logger"></param>
-        public SerialProvider(string portName, int baudRate, Parity parity, ILogger<SerialProvider> logger)
+        public SerialProvider(
+            string portName,
+            int baudRate,
+            Parity parity,
+            ILogger<SerialProvider> logger
+        )
         {
             _logger = logger;
             // Initialize schema with invalid values
-            _schema = new Dictionary<DataLabel, int> {
-                {DataLabel.Timestamp, -1 },
-                {DataLabel.Pressure, -1},
-                {DataLabel.Temperature, -1},
-                {DataLabel.AccelerationX, -1},
-                {DataLabel.AccelerationY, -1},
-                {DataLabel.AccelerationZ, -1},
-                {DataLabel.Latitude, -1},
-                {DataLabel.Longitude, -1},
-                {DataLabel.Altitude, -1},
+            _schema = new Dictionary<DataLabel, int>
+            {
+                { DataLabel.Timestamp, -1 },
+                { DataLabel.Pressure, -1 },
+                { DataLabel.Temperature, -1 },
+                { DataLabel.AccelerationX, -1 },
+                { DataLabel.AccelerationY, -1 },
+                { DataLabel.AccelerationZ, -1 },
+                { DataLabel.Latitude, -1 },
+                { DataLabel.Longitude, -1 },
+                { DataLabel.Altitude, -1 },
             };
             // Note that more options are available for configuring a SerialPort,
             // namely data bits, stop bits and handshake. I have no idea what those
@@ -73,40 +80,40 @@ namespace backend24.Services.DataProviders
             {
                 // I have no clue what a reasonable value for this is
                 ReadTimeout = 500,
-                WriteTimeout = 500
+                WriteTimeout = 500,
             };
             // Open the port
             _serialPort.Open();
-			// Set up event listeners
-			_timer = new System.Timers.Timer(500) {
-				AutoReset = true
-			};
-			_timer.Elapsed += HandleDataReceived;
+            // Set up event listeners
+            _timer = new System.Timers.Timer(500) { AutoReset = true };
+            _timer.Elapsed += HandleDataReceived;
             _timer.Start();
         }
-		
-		/// <summary>
+
+        /// <summary>
         /// Handle data being received on the serial port
         /// </summary>
         /// <param name="sender">The SerialPort object which raised the event</param>
         /// <param name="e"></param>
         private void HandleDataReceived(object? sender, System.Timers.ElapsedEventArgs e)
         {
-			_logger.LogInformation("Receiving...");
+            _logger.LogInformation("Receiving...");
             _buffer += _serialPort.ReadExisting();
             _buffer = _buffer.TrimStart();
-			while(_buffer.Contains('\n')){
+            while (_buffer.Contains('\n'))
+            {
                 int idx = _buffer.IndexOf('\n');
-				string line = _buffer[..idx];
+                string line = _buffer[..idx];
                 _buffer = _buffer.Remove(0, line.Length);
                 HandleLineReceived(line);
                 AppendToFile(line);
             }
-		}
+        }
 
         private void HandleLineReceived(string line)
         {
-            _logger.LogInformation("LINE: {line}", line);;
+            _logger.LogInformation("LINE: {line}", line);
+            ;
             // Check for schema message
             if (line.StartsWith("schema", StringComparison.CurrentCultureIgnoreCase))
             {
@@ -115,7 +122,7 @@ namespace backend24.Services.DataProviders
             }
 
             // Start processing data only after a schema has arrived
-			//_logger.LogInformation("Should");
+            //_logger.LogInformation("Should");
             if (!_schema.ContainsValue(-1))
             {
                 if (line.Trim() != "")
@@ -152,12 +159,19 @@ namespace backend24.Services.DataProviders
                     "latitude" => DataLabel.Latitude,
                     "longitude" => DataLabel.Longitude,
                     "altitude" => DataLabel.Altitude,
-                    string entry => throw new InvalidDataException($"Received unknown schema entry {entry} from serial port, consider adding a new item to {nameof(DataLabel)}")
+                    string entry => throw new InvalidDataException(
+                        $"Received unknown schema entry {entry} from serial port, consider adding a new item to {nameof(DataLabel)}"
+                    ),
                 };
                 _schema[key] = i;
             }
 
-            if (_schema.ContainsValue(-1)) throw new InvalidDataException($"Schema received from serial port didn't contain entry for every {nameof(DataLabel)}");
+            if (_schema.ContainsValue(-1))
+            {
+                throw new InvalidDataException(
+                    $"Schema received from serial port didn't contain entry for every {nameof(DataLabel)}"
+                );
+            }
         }
 
         /// <summary>
@@ -171,13 +185,20 @@ namespace backend24.Services.DataProviders
             // Separate values
             string[] data = message.Split(':').Select(x => x.Trim().Trim('[', ']', ';')).ToArray();
             // Build dictionary
-            Dictionary<DataLabel, string> dict = _schema.Select(x => (x.Key, data[x.Value])).ToDictionary();
-            float latitude = 0f, longitude = 0f, altitude = 0f;
-            if(dict[DataLabel.Latitude] != "nan") latitude = float.Parse(dict[DataLabel.Latitude]);
-			if(dict[DataLabel.Longitude] != "nan") longitude = float.Parse(dict[DataLabel.Longitude]);
-			if(dict[DataLabel.Altitude] != "nan") altitude = float.Parse(dict[DataLabel.Altitude]);
-			// Wrap data
-			return new EventData<Dictionary<DataLabel, string>>
+            Dictionary<DataLabel, string> dict = _schema
+                .Select(x => (x.Key, data[x.Value]))
+                .ToDictionary();
+            float latitude = 0f,
+                longitude = 0f,
+                altitude = 0f;
+            if (dict[DataLabel.Latitude] != "nan")
+                latitude = float.Parse(dict[DataLabel.Latitude]);
+            if (dict[DataLabel.Longitude] != "nan")
+                longitude = float.Parse(dict[DataLabel.Longitude]);
+            if (dict[DataLabel.Altitude] != "nan")
+                altitude = float.Parse(dict[DataLabel.Altitude]);
+            // Wrap data
+            return new EventData<Dictionary<DataLabel, string>>
             {
                 DataStamp = new DataStamp
                 {
@@ -187,19 +208,20 @@ namespace backend24.Services.DataProviders
                     {
                         Latitude = latitude,
                         Longitude = longitude,
-                        Altitude = altitude
-                    }
+                        Altitude = altitude,
+                    },
                 },
-                Data = dict
+                Data = dict,
             };
         }
 
-		private void AppendToFile(string toAppend) {
-			string filePath = @"D:\escola\20232024\clube\cansat\code\datasave";
-			File.AppendAllText(filePath, toAppend);
-		}
+        private void AppendToFile(string toAppend)
+        {
+            string filePath = @"D:\escola\20232024\clube\cansat\code\datasave";
+            File.AppendAllText(filePath, toAppend);
+        }
 
-		public void Dispose()
+        public void Dispose()
         {
             // Close the serial port so it can be used by other apps
             _serialPort.Close();

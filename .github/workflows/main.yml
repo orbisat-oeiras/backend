@@ -1,0 +1,14 @@
+name: Run checks
+
+on: [push, pull_request]
+
+jobs:
+  call-skip:
+    uses: ./.github/workflows/skip.yml
+    secrets: inherit
+
+  call-test:
+    needs: call-skip
+    if: ${{needs.call-skip.outputs.should_skip != 'true'}}
+    uses: ./.github/workflows/test.yml
+    secrets: inherit
