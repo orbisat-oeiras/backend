@@ -1,0 +1,13 @@
+name: Run checks and tests
+
+on: workflow_call
+
+jobs:
+  check:
+    name: Run style checks
+    runs-on: ubuntu-latest
+    # Skip checks for PR merges
+    if: (github.event_name == 'push' && contains(toJSON(github.event.head_commit.message), 'Merge pull request ') == false)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/check
