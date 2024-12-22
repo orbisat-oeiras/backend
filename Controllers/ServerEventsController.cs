@@ -1,4 +1,4 @@
-﻿using backend24.Extensions;
+using backend24.Extensions;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 
@@ -41,7 +41,7 @@ namespace backend24.Controllers
         /// </summary>
         /// <returns>Good question</returns>
         [HttpGet()]
-        public async Task SSE()
+        public void SSE()
         {
             // Set the response headers; this tells the client we're initiating SSE
             Response.Headers.ContentType = "text/event-stream";
@@ -67,13 +67,6 @@ namespace backend24.Controllers
                     await Response.WriteAsync("\n\n");
                     await Response.Body.FlushAsync();
                 };
-            }
-
-            // Keep the server alive
-            // This feels very dodgy
-            while (true)
-            {
-                await Task.Delay(1000);
             }
         }
     }
