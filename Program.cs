@@ -6,6 +6,7 @@ using backend24.Services.DataProcessors.DataExtractors;
 using backend24.Services.DataProviders;
 using backend24.Services.EventFinalizers;
 using NReco.Logging.File;
+using Spectre.Console;
 
 namespace backend24
 {
@@ -19,15 +20,18 @@ namespace backend24
             builder.Logging.ClearProviders();
             builder.Logging.AddConsole();
             builder.Logging.AddFile("Logs/log.txt");
-            // Get the name of the serial port where data is arriving
-            Console.WriteLine(
-                "Enter the name of the serial port where the APC220 module is connected.\nAvailable ports are:"
-            );
-            Console.Write(
-                string.Concat(SerialPort.GetPortNames().Select(x => "\t" + x + "\n")) + "> "
-            );
-            string serialPortName = Console.ReadLine()!;
 
+            // Get the name of the serial port where data is arriving
+            var serialPortName = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title(
+                        "Please select the serial port where the [blue]APC220 module[/] is connected."
+                    )
+                    .PageSize(10)
+                    .AddChoices(SerialPort.GetPortNames())
+                    .HighlightStyle(new Style(foreground: Color.White, background: Color.Blue))
+            );
+            Console.WriteLine($"Selected port: {serialPortName}");
             // Add services to the container.
             // Register internal services, using keyed services
             builder
@@ -69,17 +73,17 @@ namespace backend24
                 )
                 .AddFinalizer<VelocityFinalizer>();
 
-            // This will register all classes annotated with ApiController
-            builder.Services.AddControllers();
-            // Set up Swagger/OpenAPI (learn more at https://aka.ms/aspnetcore/swashbuckle)
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
-
             builder.Services.AddCors(options =>
                 options.AddDefaultPolicy(policy =>
                     policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()
                 )
             );
+
+            // This will register all classes annotated with ApiController
+            builder.Services.AddControllers();
+            // Set up Swagger/OpenAPI (learn more at https://aka.ms/aspnetcore/swashbuckle)
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
 
             // Build an app from the configuration.
             var app = builder.Build();
