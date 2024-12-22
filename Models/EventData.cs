@@ -5,8 +5,8 @@
     /// <see cref="Models.DataStamp"/> object
     /// </summary>
     /// <typeparam name="T"></typeparam>
-	public readonly struct EventData<T>
-	{
+    public readonly struct EventData<T>
+    {
         public DataStamp DataStamp { get; init; }
         public T Data { get; init; }
     }
