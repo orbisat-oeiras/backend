@@ -9,15 +9,16 @@ using NReco.Logging.File;
 
 namespace backend24
 {
-	public class Program
-	{
-		public static void Main(string[] args) {
-			// Create a builder, using the arguments passed from the command line.
-			var builder = WebApplication.CreateBuilder(args);
-			// Reset logging to the console
-			builder.Logging.ClearProviders();
-			builder.Logging.AddConsole();
-			builder.Logging.AddFile("Logs/log.txt");
+    public class Program
+    {
+        public static void Main(string[] args)
+        {
+            // Create a builder, using the arguments passed from the command line.
+            var builder = WebApplication.CreateBuilder(args);
+            // Reset logging to the console
+            builder.Logging.ClearProviders();
+            builder.Logging.AddConsole();
+            builder.Logging.AddFile("Logs/log.txt");
 
             // Get the name of the serial port where data is arriving
             Console.WriteLine(
