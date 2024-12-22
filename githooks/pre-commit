@@ -69,7 +69,7 @@ def lint_style(files: list[str]) -> int:
         "dotnet",
         "format",
         "style",
-        "metroidvania/metroidvania.sln",
+        "backend24.sln",
         "--verify-no-changes",
         "--include",
     ] + files
@@ -89,7 +89,7 @@ def lint_analyzers(files: list[str]) -> int:
         "dotnet",
         "format",
         "analyzers",
-        "metroidvania/metroidvania.sln",
+        "backend24.sln",
         "--verify-no-changes",
         "--include",
     ] + files

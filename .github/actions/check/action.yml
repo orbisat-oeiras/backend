@@ -20,5 +20,5 @@ runs:
     - name: Check style
       shell: bash
       run: |
-        dotnet format style --verify-no-changes --verbosity diagnostic
-        dotnet format analyzers --verify-no-changes --verbosity diagnostic
+        dotnet format style backend24.sln --verify-no-changes --verbosity diagnostic
+        dotnet format analyzers backend24.sln --verify-no-changes --verbosity diagnostic
