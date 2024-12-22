@@ -1,4 +1,4 @@
-﻿namespace backend24.Services.EventFinalizers
+namespace backend24.Services.EventFinalizers
 {
     /// <summary>
     /// Marks a class as an event finalizer, telling ServerEventsController to subscribe to it.

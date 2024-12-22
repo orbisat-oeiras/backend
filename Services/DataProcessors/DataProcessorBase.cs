@@ -1,4 +1,4 @@
-﻿using backend24.Models;
+using backend24.Models;
 using backend24.Services.DataProviders;
 
 namespace backend24.Services.DataProcessors
