@@ -33,7 +33,7 @@ namespace backend24.Controllers
 		/// </summary>
 		/// <returns>Good question</returns>
 		[HttpGet()]
-		public async Task SSE(CancellationToken cancellationToken) {
+		public void SSE() {
 			// Set the response headers; this tells the client we're initiating SSE
 			Response.Headers.ContentType = "text/event-stream";
 			Response.Headers.CacheControl = "no-cache";
@@ -58,13 +58,6 @@ namespace backend24.Controllers
 					await Response.Body.FlushAsync();
 				};
             }
-
-			// Keep the server alive
-			// This still feels very dodgy
-			
-            while (cancellationToken == default) {
-				await Task.Delay(1000);
-			}
 		}
 	}
 }
