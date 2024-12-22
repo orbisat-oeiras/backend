@@ -5,6 +5,7 @@ using backend24.Services.DataProcessors;
 using backend24.Services.DataProcessors.DataExtractors;
 using backend24.Services.DataProviders;
 using backend24.Services.EventFinalizers;
+using NReco.Logging.File;
 
 namespace backend24
 {
@@ -17,6 +18,7 @@ namespace backend24
             // Reset logging to the console
             builder.Logging.ClearProviders();
             builder.Logging.AddConsole();
+            builder.Logging.AddFile("Logs/log.txt");
 
             // Get the name of the serial port where data is arriving
             Console.WriteLine(
