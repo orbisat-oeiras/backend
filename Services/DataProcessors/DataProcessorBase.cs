@@ -1,4 +1,4 @@
-﻿using backend24.Models;
+using backend24.Models;
 using backend24.Services.DataProviders;
 
 namespace backend24.Services.DataProcessors
@@ -24,7 +24,7 @@ namespace backend24.Services.DataProcessors
         /// Re-sends the data that is received, after processing it.
         /// </summary>
         /// <param name="data">The data to be processed and re-sent</param>
-        void BubbleUp(EventData<T1> data)
+        private void BubbleUp(EventData<T1> data)
         {
             OnDataProvided?.Invoke(Process(data));
         }

@@ -1,11 +1,11 @@
-﻿using backend24.Models;
+using backend24.Models;
 using backend24.Services.DataProviders;
 
 namespace backend24.Services.DataProcessors
 {
     public class VelocityProcessor : DataProcessorBase<float, float>
     {
-        float _last = float.NaN;
+        private float _last = float.NaN;
 
         public VelocityProcessor(
             [FromKeyedServices(ServiceKeys.AltitudeExtractor)] IDataProvider<float> provider

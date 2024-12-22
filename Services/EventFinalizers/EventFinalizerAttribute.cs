@@ -1,4 +1,4 @@
-﻿namespace backend24.Services.EventFinalizers
+namespace backend24.Services.EventFinalizers
 {
     /// <summary>
     /// Marks a class as an event finalizer, telling ServerEventsController to subscribe to it.
@@ -11,5 +11,5 @@
     /// TODO: I think this is useless...
     /// </remarks>
     [System.AttributeUsage(AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
-    sealed class EventFinalizerAttribute : Attribute { }
+    internal sealed class EventFinalizerAttribute : Attribute { }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO.Ports;
 using System.Text.RegularExpressions;
 using backend24.Models;
@@ -167,9 +167,11 @@ namespace backend24.Services.DataProviders
             }
 
             if (_schema.ContainsValue(-1))
+            {
                 throw new InvalidDataException(
                     $"Schema received from serial port didn't contain entry for every {nameof(DataLabel)}"
                 );
+            }
         }
 
         /// <summary>
