@@ -1,14 +1,4 @@
-﻿## Developing
-
-After cloning the repository, please run the following command:
-
-```bash
-make install
-```
-
-This will install all the necessary tools and Git hooks to enforce proper style.
-
-## Project structure
+﻿## Project structure
 
 - Controllers: classes derived from `ControllerBase`, implementing API endpoints
   - `ServerEventsController`: responsible for opening an SSE channel and sending tagged data to the client. Provides the following endpoint for subscribing to SSE: `api/sse`. All data sent will be collected from objects marked with `EventFinalizerAttribute`, which will be automatically registered at startup.
