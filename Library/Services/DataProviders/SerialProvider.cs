@@ -184,9 +184,7 @@ namespace backend.Library.Services.DataProviders
             // Separate values
             var data = message.Split(':').Select(x => x.Trim().Trim('[', ']', ';')).ToArray();
             // Build dictionary
-            var dict = _schema
-                .Select(x => (x.Key, data[x.Value]))
-                .ToDictionary();
+            var dict = _schema.Select(x => (x.Key, data[x.Value])).ToDictionary();
             float latitude = 0f,
                 longitude = 0f,
                 altitude = 0f;

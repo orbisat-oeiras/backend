@@ -1,8 +1,8 @@
 ﻿using System.Text.Json;
-using Microsoft.AspNetCore.Http;
 using backend.Library.Services.DataProviders;
-using Microsoft.Extensions.DependencyInjection;
 using backend.Library.Services.EventFinalizers;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace backend.Library.Extensions
 {
@@ -53,10 +53,7 @@ namespace backend.Library.Extensions
             ArgumentNullException.ThrowIfNull(response);
             ArgumentNullException.ThrowIfNull(value);
 
-            return response.WriteAsync(
-                JsonSerializer.Serialize(value, opts),
-                cancellationToken
-            );
+            return response.WriteAsync(JsonSerializer.Serialize(value, opts), cancellationToken);
         }
     }
 }

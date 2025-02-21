@@ -1,8 +1,8 @@
-﻿using backend.Library.Extensions;
-using Microsoft.AspNetCore.Cors;
-using System.Text.Json;
-using Microsoft.AspNetCore.Mvc;
+﻿using System.Text.Json;
+using backend.Library.Extensions;
 using backend.Library.Services.EventFinalizers;
+using Microsoft.AspNetCore.Cors;
+using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Server.Controllers
 {

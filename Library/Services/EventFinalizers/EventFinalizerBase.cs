@@ -9,7 +9,9 @@ namespace backend.Library.Services.EventFinalizers
     /// </summary>
     /// <typeparam name="T">Type of incoming data</typeparam>
     [EventFinalizer]
-    public abstract class EventFinalizerBase<T> : DataProcessorBase<T, (string, object)> , IFinalizedProvider
+    public abstract class EventFinalizerBase<T>
+        : DataProcessorBase<T, (string, object)>,
+            IFinalizedProvider
     {
         protected EventFinalizerBase(IDataProvider<T> provider)
             : base(provider) { }
@@ -18,7 +20,5 @@ namespace backend.Library.Services.EventFinalizers
     /// <summary>
     /// Newtype for the IDataProvider specialization implemented by a finalizer
     /// </summary>
-    public interface IFinalizedProvider : IDataProvider<(string tag, object content)>
-    {
-    }
+    public interface IFinalizedProvider : IDataProvider<(string tag, object content)> { }
 }
