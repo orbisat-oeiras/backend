@@ -103,8 +103,8 @@ namespace backend.Library.Services.DataProviders
             _buffer = _buffer.TrimStart();
             while (_buffer.Contains('\n'))
             {
-                var idx = _buffer.IndexOf('\n');
-                var line = _buffer[..idx];
+                int idx = _buffer.IndexOf('\n');
+                string line = _buffer[..idx];
                 _buffer = _buffer.Remove(0, line.Length);
                 HandleLineReceived(line);
                 AppendToFile(line);
@@ -144,10 +144,10 @@ namespace backend.Library.Services.DataProviders
         private void ParseSchema(string schema)
         {
             _logger.LogInformation("Schema: {data}", schema);
-            var data = schema.Split(':').Select(x => x.Trim().Trim('[', ']', ';')).ToArray();
-            for (var i = 0; i < data.Length; i++)
+            string[] data = schema.Split(':').Select(x => x.Trim().Trim('[', ']', ';')).ToArray();
+            for (int i = 0; i < data.Length; i++)
             {
-                var key = data[i] switch
+                DataLabel key = data[i] switch
                 {
                     "timestamp" => DataLabel.Timestamp,
                     "pressure" => DataLabel.Pressure,
@@ -182,9 +182,11 @@ namespace backend.Library.Services.DataProviders
         {
             _logger.LogInformation("Message: {message}", message);
             // Separate values
-            var data = message.Split(':').Select(x => x.Trim().Trim('[', ']', ';')).ToArray();
+            string[] data = message.Split(':').Select(x => x.Trim().Trim('[', ']', ';')).ToArray();
             // Build dictionary
-            var dict = _schema.Select(x => (x.Key, data[x.Value])).ToDictionary();
+            Dictionary<DataLabel, string> dict = _schema
+                .Select(x => (x.Key, data[x.Value]))
+                .ToDictionary();
             float latitude = 0f,
                 longitude = 0f,
                 altitude = 0f;
@@ -214,7 +216,7 @@ namespace backend.Library.Services.DataProviders
 
         private void AppendToFile(string toAppend)
         {
-            var filePath = @"D:\escola\20232024\clube\cansat\code\datasave";
+            string filePath = @"D:\escola\20232024\clube\cansat\code\datasave";
             File.AppendAllText(filePath, toAppend);
         }
 

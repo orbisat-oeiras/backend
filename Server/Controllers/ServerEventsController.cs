@@ -50,7 +50,7 @@ namespace backend.Server.Controllers
             Response.Headers.CacheControl = "no-cache";
             Response.Headers.Connection = "keep-alive";
 
-            foreach (var eventFinalizer in _eventFinalizers)
+            foreach (IFinalizedProvider eventFinalizer in _eventFinalizers)
             {
                 // Subscribe to finalizers
                 eventFinalizer.OnDataProvided += async payload =>

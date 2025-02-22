@@ -24,9 +24,9 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
 
         protected override float Convert(IEnumerable<string> data)
         {
-            var pressure = float.Parse(data.First());
+            float pressure = float.Parse(data.First());
             // Add 273.15 to convert from Celsius to kelvin
-            var temperature = float.Parse(data.Last()) + 273.15f;
+            float temperature = float.Parse(data.Last()) + 273.15f;
 
             // Calculate the altitude from pressure and temperature. Based on the first formula from
             // https://physics.stackexchange.com/questions/333475/how-to-calculate-altitude-from-current-temperature-and-pressure
@@ -34,10 +34,10 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
             // Their values are obtained from https://en.wikipedia.org/wiki/Barometric_formula. For layer-varying values,
             // b=0 is used, as it appears to range between 0 and 11000 meters, so our maximum altitude of 1000 meters sits
             // comfortably under the threshold.
-            var pressureRef = 101325f;
+            float pressureRef = 101325f;
             // This represents the exponent (g0 * M)/(R * L)
-            var exp = 5.2558f;
-            var lapseRate = 0.0065f;
+            float exp = 5.2558f;
+            float lapseRate = 0.0065f;
             return temperature * (MathF.Pow(pressureRef / pressure, 1 / exp) - 1) / lapseRate;
         }
     }

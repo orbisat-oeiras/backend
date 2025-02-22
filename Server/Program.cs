@@ -15,14 +15,14 @@ namespace backend
         public static void Main(string[] args)
         {
             // Create a builder, using the arguments passed from the command line.
-            var builder = WebApplication.CreateBuilder(args);
+            WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
             // Reset logging to the console
             builder.Logging.ClearProviders();
             builder.Logging.AddConsole();
             builder.Logging.AddFile("Logs/log.txt");
 
             // Get the name of the serial port where data is arriving
-            var serialPortName = AnsiConsole.Prompt(
+            string serialPortName = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title(
                         "Please select the serial port where the [blue]APC220 module[/] is connected."
@@ -86,7 +86,7 @@ namespace backend
             builder.Services.AddSwaggerGen();
 
             // Build an app from the configuration.
-            var app = builder.Build();
+            WebApplication app = builder.Build();
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())

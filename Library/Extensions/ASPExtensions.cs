@@ -39,7 +39,7 @@ namespace backend.Library.Extensions
             CancellationToken cancellationToken = default
         )
         {
-            var opts = new JsonSerializerOptions
+            JsonSerializerOptions opts = new JsonSerializerOptions
             {
                 NumberHandling = System
                     .Text
