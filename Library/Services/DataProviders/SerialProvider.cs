@@ -37,9 +37,11 @@ namespace backend.Library.Services.DataProviders
         // Logger provided by DI, used for printing information to all logging providers at once
         private readonly ILogger<SerialProvider> _logger;
         private readonly SerialPort _serialPort;
-        private readonly Dictionary<DataLabel, int> _schema;
+        private Dictionary<DataLabel, int> _schema;
 
         private string _buffer = "";
+
+        private bool _isSchemaReady = false;
 
         private readonly System.Timers.Timer _timer;
 
@@ -124,7 +126,7 @@ namespace backend.Library.Services.DataProviders
 
             // Start processing data only after a schema has arrived
             //_logger.LogInformation("Should");
-            if (!_schema.ContainsValue(-1))
+            if (_isSchemaReady)
             {
                 if (line.Trim() != "")
                     // Process and emit data
@@ -132,7 +134,7 @@ namespace backend.Library.Services.DataProviders
             }
             else
             {
-                //_logger.LogWarning("Waiting for schema message");
+                _logger.LogWarning("Waiting for schema message");
             }
         }
 
@@ -144,6 +146,20 @@ namespace backend.Library.Services.DataProviders
         private void ParseSchema(string schema)
         {
             _logger.LogInformation("Schema: {data}", schema);
+
+            _schema = new Dictionary<DataLabel, int>
+            {
+                { DataLabel.Timestamp, -1 },
+                { DataLabel.Pressure, -1 },
+                { DataLabel.Temperature, -1 },
+                { DataLabel.AccelerationX, -1 },
+                { DataLabel.AccelerationY, -1 },
+                { DataLabel.AccelerationZ, -1 },
+                { DataLabel.Latitude, -1 },
+                { DataLabel.Longitude, -1 },
+                { DataLabel.Altitude, -1 },
+            };
+
             string[] data = schema.Split(':').Select(x => x.Trim().Trim('[', ']', ';')).ToArray();
             for (int i = 0; i < data.Length; i++)
             {
@@ -165,12 +181,8 @@ namespace backend.Library.Services.DataProviders
                 _schema[key] = i;
             }
 
-            if (_schema.ContainsValue(-1))
-            {
-                throw new InvalidDataException(
-                    $"Schema received from serial port didn't contain entry for every {nameof(DataLabel)}"
-                );
-            }
+            _isSchemaReady = true;
+            _logger.LogInformation("Schema is parsed");
         }
 
         /// <summary>
@@ -185,16 +197,16 @@ namespace backend.Library.Services.DataProviders
             string[] data = message.Split(':').Select(x => x.Trim().Trim('[', ']', ';')).ToArray();
             // Build dictionary
             Dictionary<DataLabel, string> dict = _schema
-                .Select(x => (x.Key, data[x.Value]))
+                .Select(x => (x.Key, x.Value == -1 ? "n/a" : data[x.Value]))
                 .ToDictionary();
             float latitude = 0f,
                 longitude = 0f,
                 altitude = 0f;
-            if (dict[DataLabel.Latitude] != "nan")
+            if (dict[DataLabel.Latitude] != "nan" && dict[DataLabel.Latitude] != "n/a")
                 latitude = float.Parse(dict[DataLabel.Latitude]);
-            if (dict[DataLabel.Longitude] != "nan")
+            if (dict[DataLabel.Longitude] != "nan" && dict[DataLabel.Longitude] != "n/a")
                 longitude = float.Parse(dict[DataLabel.Longitude]);
-            if (dict[DataLabel.Altitude] != "nan")
+            if (dict[DataLabel.Altitude] != "nan" && dict[DataLabel.Altitude] != "n/a")
                 altitude = float.Parse(dict[DataLabel.Altitude]);
             // Wrap data
             return new EventData<Dictionary<DataLabel, string>>
