@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Threading.Tasks;
 using backend.Library.Extensions;
 using backend.Library.Services.EventFinalizers;
 using Microsoft.AspNetCore.Cors;
@@ -69,6 +70,11 @@ namespace backend.Server.Controllers
                     await Response.WriteAsync("\n\n");
                     await Response.Body.FlushAsync();
                 };
+            }
+
+            // TODO: This is necessary to keep the connection alive, but makes it impossible to terminate the server
+            while(true) {
+                Task.Delay(1000);
             }
         }
     }
