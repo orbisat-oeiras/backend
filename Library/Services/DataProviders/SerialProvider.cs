@@ -107,7 +107,6 @@ namespace backend.Library.Services.DataProviders
                 string line = _buffer[..idx];
                 _buffer = _buffer.Remove(0, line.Length);
                 HandleLineReceived(line);
-                AppendToFile(line);
             }
         }
 
@@ -212,12 +211,6 @@ namespace backend.Library.Services.DataProviders
                 },
                 Data = dict,
             };
-        }
-
-        private void AppendToFile(string toAppend)
-        {
-            string filePath = @"D:\escola\20232024\clube\cansat\code\datasave";
-            File.AppendAllText(filePath, toAppend);
         }
 
         public void Dispose()
