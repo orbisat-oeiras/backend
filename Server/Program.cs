@@ -1,4 +1,5 @@
 ﻿using System.IO.Ports;
+using System.Runtime.CompilerServices;
 using backend.Library.Extensions;
 using backend.Library.Services;
 using backend.Library.Services.DataProcessors;
@@ -30,12 +31,21 @@ namespace backend
                     .PageSize(10)
                     .AddChoices(SerialPort.GetPortNames())
                     .HighlightStyle(new Style(foreground: Color.White, background: Color.Blue))
+                    .AddChoices("Mock Serial Data")
             );
             Console.WriteLine($"Selected port: {serialPortName}");
             // Add services to the container.
             // Register internal services, using keyed services
-            builder
-                .Services.AddKeyedSingleton<
+            if (serialPortName == "Mock Serial Data")
+            {
+                builder.Services.AddKeyedSingleton<
+                    IDataProvider<Dictionary<SerialProvider.DataLabel, string>>,
+                    MockDataProvider
+                >(ServiceKeys.SerialProvider);
+            }
+            else
+            {
+                builder.Services.AddKeyedSingleton<
                     IDataProvider<Dictionary<SerialProvider.DataLabel, string>>,
                     SerialProvider
                 >(
@@ -47,8 +57,10 @@ namespace backend
                             19200,
                             Parity.None
                         )
-                )
-                .AddKeyedSingleton<IDataProvider<float>, PressureExtractor>(
+                );
+            }
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, PressureExtractor>(
                     ServiceKeys.PressureExtractor
                 )
                 .AddFinalizer<PressureFinalizer>()
@@ -73,17 +85,17 @@ namespace backend
                 )
                 .AddFinalizer<VelocityFinalizer>();
 
-            builder.Services.AddCors(options =>
-                options.AddDefaultPolicy(policy =>
-                    policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()
-                )
-            );
-
             // This will register all classes annotated with ApiController
             builder.Services.AddControllers();
             // Set up Swagger/OpenAPI (learn more at https://aka.ms/aspnetcore/swashbuckle)
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+
+            builder.Services.AddCors(options =>
+                options.AddDefaultPolicy(policy =>
+                    policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()
+                )
+            );
 
             // Build an app from the configuration.
             WebApplication app = builder.Build();
