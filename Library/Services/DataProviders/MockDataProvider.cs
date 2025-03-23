@@ -67,7 +67,7 @@ namespace backend.Library.Services.DataProviders
                     Data = _lastData,
                 }
             );
-            _logger.LogInformation($"Pressure = {_pressure}, Temperature = {_altitude}");
+            _logger.LogInformation("Genereted Mock Data");
         }
 
         public void Dispose()
