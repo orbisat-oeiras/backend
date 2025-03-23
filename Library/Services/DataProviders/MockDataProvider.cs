@@ -25,8 +25,6 @@ namespace backend.Library.Services.DataProviders
 
         private readonly System.Timers.Timer _timer;
 
-        private Dictionary<SerialProvider.DataLabel, string> _lastData = new();
-
         public MockDataProvider(ILogger<MockDataProvider> logger)
         {
             _logger = logger;
@@ -39,7 +37,10 @@ namespace backend.Library.Services.DataProviders
         private void GenerateMockData(object? sender, ElapsedEventArgs e)
         {
             long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            _lastData = new Dictionary<SerialProvider.DataLabel, string>
+            Dictionary<SerialProvider.DataLabel, string> lastData = new Dictionary<
+                SerialProvider.DataLabel,
+                string
+            >
             {
                 { SerialProvider.DataLabel.Timestamp, now.ToString() },
                 { SerialProvider.DataLabel.Pressure, _pressure.ToString() },
@@ -56,15 +57,15 @@ namespace backend.Library.Services.DataProviders
                 {
                     DataStamp = new DataStamp
                     {
-                        Timestamp = long.Parse(_lastData[SerialProvider.DataLabel.Timestamp]),
+                        Timestamp = long.Parse(lastData[SerialProvider.DataLabel.Timestamp]),
                         Coordinates = new GPSCoords
                         {
-                            Latitude = float.Parse(_lastData[SerialProvider.DataLabel.Latitude]),
-                            Longitude = float.Parse(_lastData[SerialProvider.DataLabel.Longitude]),
-                            Altitude = float.Parse(_lastData[SerialProvider.DataLabel.Altitude]),
+                            Latitude = float.Parse(lastData[SerialProvider.DataLabel.Latitude]),
+                            Longitude = float.Parse(lastData[SerialProvider.DataLabel.Longitude]),
+                            Altitude = float.Parse(lastData[SerialProvider.DataLabel.Altitude]),
                         },
                     },
-                    Data = _lastData,
+                    Data = lastData,
                 }
             );
             _logger.LogInformation("Genereted Mock Data");
