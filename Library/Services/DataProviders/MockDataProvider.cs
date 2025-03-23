@@ -70,11 +70,6 @@ namespace backend.Library.Services.DataProviders
             _logger.LogInformation($"Pressure = {_pressure}, Temperature = {_altitude}");
         }
 
-        public Dictionary<SerialProvider.DataLabel, string> GetData()
-        {
-            return _lastData;
-        }
-
         public void Dispose()
         {
             _timer.Stop();
