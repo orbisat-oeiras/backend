@@ -30,8 +30,8 @@ namespace backend
                     )
                     .PageSize(10)
                     .AddChoices(SerialPort.GetPortNames())
-                    .HighlightStyle(new Style(foreground: Color.White, background: Color.Blue))
                     .AddChoices("Mock Serial Data")
+                    .HighlightStyle(new Style(foreground: Color.White, background: Color.Blue))
             );
             Console.WriteLine($"Selected port: {serialPortName}");
             // Add services to the container.
