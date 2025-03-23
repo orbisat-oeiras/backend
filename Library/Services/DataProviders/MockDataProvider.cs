@@ -16,9 +16,14 @@ namespace backend.Library.Services.DataProviders
         public event Action<
             EventData<Dictionary<SerialProvider.DataLabel, string>>
         >? OnDataProvided;
-        private readonly float _altitude = 1000;
-        private readonly float _temperature = 15;
-        private readonly float _pressure = 100000;
+        private float _altitude = 1000;
+        private float _temperature = 20;
+        private float _pressure = 100000;
+        private float _accelerationX,
+            _accelerationY,
+            _accelerationZ;
+        private float _latitude,
+            _longitude;
 
         // Logger provided by DI, used for printing information to all logging providers at once
         private readonly ILogger<MockDataProvider> _logger;
@@ -37,6 +42,15 @@ namespace backend.Library.Services.DataProviders
         private void GenerateMockData(object? sender, ElapsedEventArgs e)
         {
             long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            _pressure += _pressure + _random.Next(-100, 100);
+            _altitude += _altitude + _random.Next(-10, 10);
+            _temperature += _temperature + _random.Next(-1, 1);
+            _accelerationX += _random.Next(-1, 1);
+            _accelerationY += _random.Next(-1, 1);
+            _accelerationZ += _random.Next(-1, 1);
+            _latitude += _random.Next(36, 37);
+            _longitude += _random.Next(-25, -26);
+
             Dictionary<SerialProvider.DataLabel, string> lastData = new Dictionary<
                 SerialProvider.DataLabel,
                 string
@@ -45,11 +59,11 @@ namespace backend.Library.Services.DataProviders
                 { SerialProvider.DataLabel.Timestamp, now.ToString() },
                 { SerialProvider.DataLabel.Pressure, _pressure.ToString() },
                 { SerialProvider.DataLabel.Temperature, _altitude.ToString() },
-                { SerialProvider.DataLabel.AccelerationX, _random.Next(-10, 10).ToString() },
-                { SerialProvider.DataLabel.AccelerationY, _random.Next(-10, 10).ToString() },
-                { SerialProvider.DataLabel.AccelerationZ, _random.Next(-10, 10).ToString() },
-                { SerialProvider.DataLabel.Latitude, _random.Next(-90, 90).ToString() },
-                { SerialProvider.DataLabel.Longitude, _random.Next(-180, 180).ToString() },
+                { SerialProvider.DataLabel.AccelerationX, _accelerationX.ToString() },
+                { SerialProvider.DataLabel.AccelerationY, _accelerationY.ToString() },
+                { SerialProvider.DataLabel.AccelerationZ, _accelerationZ.ToString() },
+                { SerialProvider.DataLabel.Latitude, _latitude.ToString() },
+                { SerialProvider.DataLabel.Longitude, _longitude.ToString() },
                 { SerialProvider.DataLabel.Altitude, _altitude.ToString() },
             };
             OnDataProvided?.Invoke(
@@ -57,12 +71,12 @@ namespace backend.Library.Services.DataProviders
                 {
                     DataStamp = new DataStamp
                     {
-                        Timestamp = long.Parse(lastData[SerialProvider.DataLabel.Timestamp]),
+                        Timestamp = now,
                         Coordinates = new GPSCoords
                         {
-                            Latitude = float.Parse(lastData[SerialProvider.DataLabel.Latitude]),
-                            Longitude = float.Parse(lastData[SerialProvider.DataLabel.Longitude]),
-                            Altitude = float.Parse(lastData[SerialProvider.DataLabel.Altitude]),
+                            Latitude = _latitude,
+                            Longitude = _longitude,
+                            Altitude = _altitude,
                         },
                     },
                     Data = lastData,
