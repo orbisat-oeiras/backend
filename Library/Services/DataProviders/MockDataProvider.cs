@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 namespace backend.Library.Services.DataProviders
 {
     /// <summary>
-    /// Provides data read from a serial port.
+    /// Provides fake data created on the fly.
     /// </summary>
     public sealed class MockDataProvider
         : IDataProvider<Dictionary<SerialProvider.DataLabel, string>>,
