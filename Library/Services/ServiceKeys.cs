@@ -2,7 +2,7 @@
 {
     public enum ServiceKeys
     {
-        SerialProvider,
+        DataProvider,
         PressureExtractor,
         TemperatureExtractor,
         AltitudeExtractor,

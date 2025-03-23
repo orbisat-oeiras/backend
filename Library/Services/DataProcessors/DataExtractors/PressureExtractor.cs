@@ -10,7 +10,7 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
     public class PressureExtractor : DataExtractorBase<float>
     {
         public PressureExtractor(
-            [FromKeyedServices(ServiceKeys.SerialProvider)]
+            [FromKeyedServices(ServiceKeys.DataProvider)]
                 IDataProvider<Dictionary<SerialProvider.DataLabel, string>> provider
         )
             : base(provider)

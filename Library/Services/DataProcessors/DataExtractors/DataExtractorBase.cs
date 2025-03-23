@@ -19,7 +19,7 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
         protected SerialProvider.DataLabel[] _sourceIndexes = [];
 
         protected DataExtractorBase(
-            [FromKeyedServices(ServiceKeys.SerialProvider)]
+            [FromKeyedServices(ServiceKeys.DataProvider)]
                 IDataProvider<Dictionary<SerialProvider.DataLabel, string>> provider
         )
             : base(provider) { }

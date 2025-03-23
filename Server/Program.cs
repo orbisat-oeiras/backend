@@ -41,7 +41,7 @@ namespace backend
                 builder.Services.AddKeyedSingleton<
                     IDataProvider<Dictionary<SerialProvider.DataLabel, string>>,
                     MockDataProvider
-                >(ServiceKeys.SerialProvider);
+                >(ServiceKeys.DataProvider);
             }
             else
             {
@@ -49,7 +49,7 @@ namespace backend
                     IDataProvider<Dictionary<SerialProvider.DataLabel, string>>,
                     SerialProvider
                 >(
-                    ServiceKeys.SerialProvider,
+                    ServiceKeys.DataProvider,
                     (serviceProvider, _) =>
                         ActivatorUtilities.CreateInstance<SerialProvider>(
                             serviceProvider,

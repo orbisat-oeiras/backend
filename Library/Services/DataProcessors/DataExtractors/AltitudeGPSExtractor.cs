@@ -7,7 +7,7 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
     public class AltitudeGPSExtractor : DataExtractorBase<float>
     {
         public AltitudeGPSExtractor(
-            [FromKeyedServices(ServiceKeys.SerialProvider)]
+            [FromKeyedServices(ServiceKeys.DataProvider)]
                 IDataProvider<Dictionary<SerialProvider.DataLabel, string>> provider
         )
             : base(provider)
