@@ -22,8 +22,6 @@ namespace backend.Library.Services.DataProviders
 
         // Logger provided by DI, used for printing information to all logging providers at once
         private readonly ILogger<MockDataProvider> _logger;
-        private readonly SerialPort _serialPort;
-        private readonly Dictionary<SerialProvider.DataLabel, int> _schema = new();
 
         private readonly System.Timers.Timer _timer;
 
@@ -31,7 +29,6 @@ namespace backend.Library.Services.DataProviders
 
         public MockDataProvider(ILogger<MockDataProvider> logger)
         {
-            _serialPort = new SerialPort();
             _logger = logger;
             _timer = new System.Timers.Timer(1000) { AutoReset = true };
             _timer.Elapsed += GenerateMockData;
