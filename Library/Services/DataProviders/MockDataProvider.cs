@@ -45,11 +45,11 @@ namespace backend.Library.Services.DataProviders
             _pressure += _pressure + _random.Next(-100, 100);
             _altitude += _altitude + _random.Next(-10, 10);
             _temperature += _temperature + _random.Next(-1, 1);
-            _accelerationX += _random.Next(-1, 1);
-            _accelerationY += _random.Next(-1, 1);
-            _accelerationZ += _random.Next(-1, 1);
-            _latitude += _random.Next(36, 37);
-            _longitude += _random.Next(-25, -26);
+            _accelerationX += _random.Next(-1, 1) * 0.1f;
+            _accelerationY += _random.Next(-1, 1) * 0.1f;
+            _accelerationZ += _random.Next(-1, 1) * 0.1f;
+            _latitude = 36;
+            _longitude = -25;
 
             Dictionary<SerialProvider.DataLabel, string> lastData = new Dictionary<
                 SerialProvider.DataLabel,
