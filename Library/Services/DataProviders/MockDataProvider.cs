@@ -1,5 +1,4 @@
-﻿using System.IO.Ports;
-using System.Timers;
+﻿using System.Timers;
 using backend.Library.Models;
 using Microsoft.Extensions.Logging;
 
