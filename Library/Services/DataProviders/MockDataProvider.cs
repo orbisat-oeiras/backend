@@ -42,9 +42,9 @@ namespace backend.Library.Services.DataProviders
         private void GenerateMockData(object? sender, ElapsedEventArgs e)
         {
             long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            _pressure += _pressure + _random.Next(-100, 100);
-            _altitude += _altitude + _random.Next(-10, 10);
-            _temperature += _temperature + _random.Next(-1, 1);
+            _pressure += _random.Next(-100, 100);
+            _altitude += _random.Next(-10, 10);
+            _temperature += _random.Next(-1, 1);
             _accelerationX += _random.Next(-1, 1) * 0.1f;
             _accelerationY += _random.Next(-1, 1) * 0.1f;
             _accelerationZ += _random.Next(-1, 1) * 0.1f;
