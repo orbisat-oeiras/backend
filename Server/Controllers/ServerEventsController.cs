@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Threading.Tasks;
 using backend.Library.Extensions;
 using backend.Library.Models;
 using backend.Library.Services.EventFinalizers;
@@ -44,40 +45,54 @@ namespace backend.Server.Controllers
         /// </summary>
         /// <returns>Good question</returns>
         [HttpGet()]
-        public async Task SSEAsync(CancellationToken cancellationToken)
+        public async Task SSE()
         {
             // Set the response headers; this tells the client we're initiating SSE
             Response.Headers.ContentType = "text/event-stream";
             Response.Headers.CacheControl = "no-cache";
+            Response.Headers.Append("Connection", "keep-alive");
 
-            foreach (var eventFinalizer in _eventFinalizers)
+            TaskCompletionSource tcs = new();
+            CancellationToken cancellationToken = HttpContext.RequestAborted;
+
+            foreach (IFinalizedProvider eventFinalizer in _eventFinalizers)
             {
-                // Subscribe to finalizers
-                eventFinalizer.OnDataProvided += async payload =>
+                try
                 {
-                    // Leaving these here just in case...
-                    //_logger.LogInformation("Sending event provided by {evtFinalizerType}.", eventFinalizer.GetType().Name);
-                    //_logger.LogDebug("Tag: {tag}\nContent: {content}", payload.Data.tag, payload.Data.content);
+                    // Subscribe to finalizers
+                    eventFinalizer.OnDataProvided += async payload =>
+                    {
+                        // Leaving these here just in case...
+                        //_logger.LogInformation("Sending event provided by {evtFinalizerType}.", eventFinalizer.GetType().Name);
+                        _logger.LogDebug(
+                            "Tag: {tag}\nContent: {content}",
+                            payload.Data.tag,
+                            payload.Data.content
+                        );
 
-                    // Send the tagged event in a properly formatted way
-                    await Response.WriteAsync($"event: {payload.Data.tag}\n");
-                    await Response.WriteAsync($"data: ");
-                    // Convert the content to JSON
-                    await Response.WriteJSONAsync(payload.Data.content);
-                    await Response.WriteAsync("@");
-                    await Response.WriteJSONAsync(payload.DataStamp);
-                    await Response.WriteAsync("\n\n");
-                    await Response.Body.FlushAsync();
-                };
+                        // Send the tagged event in a properly formatted way
+                        await Response.WriteAsync($"event: {payload.Data.tag}\n");
+                        await Response.WriteAsync($"data: ");
+                        // Convert the content to JSON
+                        await Response.WriteJSONAsync(payload.Data.content);
+                        await Response.WriteAsync("@");
+                        await Response.WriteJSONAsync(payload.DataStamp);
+                        await Response.WriteAsync("\n\n");
+                        await Response.Body.FlushAsync();
+                    };
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "Error in SSE connection.");
+                }
             }
 
-            // Keep the server alive
-            // This still feels very dodgy
-
-            while (cancellationToken == default)
-            {
-                await Task.Delay(1000, cancellationToken);
-            }
+            // Keep the connection open until the client disconnects
+            // This keeps the data generation loop running, even though the client is not connected
+            // This also just works, I'm not sure why
+            cancellationToken.WaitHandle.WaitOne();
+            tcs.TrySetResult();
+            await tcs.Task;
         }
     }
 }
