@@ -57,10 +57,10 @@ namespace backend.Server.Controllers
 
             foreach (IFinalizedProvider eventFinalizer in _eventFinalizers)
             {
-                try
+                // Subscribe to finalizers
+                eventFinalizer.OnDataProvided += async payload =>
                 {
-                    // Subscribe to finalizers
-                    eventFinalizer.OnDataProvided += async payload =>
+                    try
                     {
                         // Leaving these here just in case...
                         //_logger.LogInformation("Sending event provided by {evtFinalizerType}.", eventFinalizer.GetType().Name);
@@ -79,12 +79,15 @@ namespace backend.Server.Controllers
                         await Response.WriteJSONAsync(payload.DataStamp);
                         await Response.WriteAsync("\n\n");
                         await Response.Body.FlushAsync();
-                    };
-                }
-                catch (Exception e)
-                {
-                    _logger.LogError(e, "Error in SSE connection.");
-                }
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogError(
+                            e,
+                            "Error in SSE connection. The client may have disconnected."
+                        );
+                    }
+                };
             }
 
             // Keep the connection open until the client disconnects
