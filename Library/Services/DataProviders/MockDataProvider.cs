@@ -57,7 +57,7 @@ namespace backend.Library.Services.DataProviders
             {
                 { SerialProvider.DataLabel.Timestamp, now.ToString() },
                 { SerialProvider.DataLabel.Pressure, _pressure.ToString() },
-                { SerialProvider.DataLabel.Temperature, _altitude.ToString() },
+                { SerialProvider.DataLabel.Temperature, _temperature.ToString() },
                 { SerialProvider.DataLabel.AccelerationX, _accelerationX.ToString() },
                 { SerialProvider.DataLabel.AccelerationY, _accelerationY.ToString() },
                 { SerialProvider.DataLabel.AccelerationZ, _accelerationZ.ToString() },
