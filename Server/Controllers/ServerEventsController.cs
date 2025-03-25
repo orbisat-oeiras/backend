@@ -80,10 +80,9 @@ namespace backend.Server.Controllers
                         await Response.WriteAsync("\n\n");
                         await Response.Body.FlushAsync();
                     }
-                    catch (Exception e)
+                    catch (System.ObjectDisposedException)
                     {
-                        _logger.LogError(
-                            e,
+                        _logger.LogWarning(
                             "Error in SSE connection. The client may have disconnected."
                         );
                     }
