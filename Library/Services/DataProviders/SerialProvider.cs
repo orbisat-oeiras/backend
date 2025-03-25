@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.IO.Ports;
 using System.Text.RegularExpressions;
 using backend.Library.Models;
@@ -155,10 +156,7 @@ namespace backend.Library.Services.DataProviders
             {
                 _logger.LogInformation("Message: {message}", message);
                 // Separate values
-                string[] data = message
-                    .Split(':')
-                    .Select(x => x.Trim().Trim('[', ']', ';'))
-                    .ToArray();
+                string[] data = [.. message.Split(':').Select(x => x.Trim().Trim('[', ']', ';'))];
                 // Build dictionary
                 Dictionary<DataLabel, string> dict = _schema
                     .Select(x => (x.Key, data[x.Value]))
@@ -167,17 +165,20 @@ namespace backend.Library.Services.DataProviders
                     longitude = float.NaN,
                     altitude = float.NaN;
                 if (dict.TryGetValue(DataLabel.Latitude, out string? lat) && lat != "nan")
-                    latitude = float.Parse(lat);
+                    latitude = float.Parse(lat, CultureInfo.InvariantCulture);
                 if (dict.TryGetValue(DataLabel.Longitude, out string? lon) && lon != "nan")
-                    longitude = float.Parse(lon);
+                    longitude = float.Parse(lon, CultureInfo.InvariantCulture);
                 if (dict.TryGetValue(DataLabel.Altitude, out string? alt) && alt != "nan")
-                    altitude = float.Parse(alt);
+                    altitude = float.Parse(alt, CultureInfo.InvariantCulture);
                 // Wrap data
                 return new EventData<Dictionary<DataLabel, string>>
                 {
                     DataStamp = new DataStamp
                     {
-                        Timestamp = int.Parse(dict[DataLabel.Timestamp]),
+                        Timestamp = int.Parse(
+                            dict[DataLabel.Timestamp],
+                            CultureInfo.InvariantCulture
+                        ),
                         // TODO: get this info from message as well
                         Coordinates = new GPSCoords
                         {
