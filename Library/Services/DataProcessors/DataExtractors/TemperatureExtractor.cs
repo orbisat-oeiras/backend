@@ -10,7 +10,7 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
     public class TemperatureExtractor : DataExtractorBase<float>
     {
         public TemperatureExtractor(
-            [FromKeyedServices(ServiceKeys.SerialProvider)]
+            [FromKeyedServices(ServiceKeys.DataProvider)]
                 IDataProvider<Dictionary<SerialProvider.DataLabel, string>> provider
         )
             : base(provider)
