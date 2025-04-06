@@ -22,6 +22,12 @@ namespace backend
             builder.Logging.AddConsole();
             builder.Logging.AddFile("Logs/log.txt");
 
+            Console.CancelKeyPress += (sender, eventArgs) =>
+            {
+                AnsiConsole.MarkupLine("[red]Shutting down...[/]");
+                Environment.Exit(0);
+            };
+
             // Get the name of the serial port where data is arriving
             string serialPortName = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()

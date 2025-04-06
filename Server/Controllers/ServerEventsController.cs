@@ -1,5 +1,7 @@
 ﻿using System.Text.Json;
+using System.Threading.Tasks;
 using backend.Library.Extensions;
+using backend.Library.Models;
 using backend.Library.Services.EventFinalizers;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
@@ -43,33 +45,56 @@ namespace backend.Server.Controllers
         /// </summary>
         /// <returns>Good question</returns>
         [HttpGet()]
-        public void SSE()
+        public async Task SSE()
         {
             // Set the response headers; this tells the client we're initiating SSE
             Response.Headers.ContentType = "text/event-stream";
             Response.Headers.CacheControl = "no-cache";
-            Response.Headers.Connection = "keep-alive";
+            Response.Headers.Append("Connection", "keep-alive");
+
+            TaskCompletionSource tcs = new();
+            CancellationToken cancellationToken = HttpContext.RequestAborted;
 
             foreach (IFinalizedProvider eventFinalizer in _eventFinalizers)
             {
                 // Subscribe to finalizers
                 eventFinalizer.OnDataProvided += async payload =>
                 {
-                    // Leaving these here just in case...
-                    //_logger.LogInformation("Sending event provided by {evtFinalizerType}.", eventFinalizer.GetType().Name);
-                    //_logger.LogDebug("Tag: {tag}\nContent: {content}", payload.Data.tag, payload.Data.content);
+                    try
+                    {
+                        // Leaving these here just in case...
+                        //_logger.LogInformation("Sending event provided by {evtFinalizerType}.", eventFinalizer.GetType().Name);
+                        _logger.LogDebug(
+                            "Tag: {tag}\nContent: {content}",
+                            payload.Data.tag,
+                            payload.Data.content
+                        );
 
-                    // Send the tagged event in a properly formatted way
-                    await Response.WriteAsync($"event: {payload.Data.tag}\n");
-                    await Response.WriteAsync($"data: ");
-                    // Convert the content to JSON
-                    await Response.WriteJSONAsync(payload.Data.content);
-                    await Response.WriteAsync("@");
-                    await Response.WriteJSONAsync(payload.DataStamp);
-                    await Response.WriteAsync("\n\n");
-                    await Response.Body.FlushAsync();
+                        // Send the tagged event in a properly formatted way
+                        await Response.WriteAsync($"event: {payload.Data.tag}\n");
+                        await Response.WriteAsync($"data: ");
+                        // Convert the content to JSON
+                        await Response.WriteJSONAsync(payload.Data.content);
+                        await Response.WriteAsync("@");
+                        await Response.WriteJSONAsync(payload.DataStamp);
+                        await Response.WriteAsync("\n\n");
+                        await Response.Body.FlushAsync();
+                    }
+                    catch (System.ObjectDisposedException)
+                    {
+                        _logger.LogWarning(
+                            "Error in SSE connection. The client may have disconnected."
+                        );
+                    }
                 };
             }
+
+            // Keep the connection open until the client disconnects
+            // This keeps the data generation loop running, even though the client is not connected
+            // This also just works, I'm not sure why
+            cancellationToken.WaitHandle.WaitOne();
+            tcs.TrySetResult();
+            await tcs.Task;
         }
     }
 }

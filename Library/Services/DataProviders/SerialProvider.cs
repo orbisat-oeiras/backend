@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.IO.Ports;
 using System.Text.RegularExpressions;
 using backend.Library.Models;
@@ -37,7 +38,7 @@ namespace backend.Library.Services.DataProviders
         // Logger provided by DI, used for printing information to all logging providers at once
         private readonly ILogger<SerialProvider> _logger;
         private readonly SerialPort _serialPort;
-        private readonly Dictionary<DataLabel, int> _schema;
+        private readonly Dictionary<DataLabel, int> _schema = [];
 
         private string _buffer = "";
 
@@ -58,19 +59,6 @@ namespace backend.Library.Services.DataProviders
         )
         {
             _logger = logger;
-            // Initialize schema with invalid values
-            _schema = new Dictionary<DataLabel, int>
-            {
-                { DataLabel.Timestamp, -1 },
-                { DataLabel.Pressure, -1 },
-                { DataLabel.Temperature, -1 },
-                { DataLabel.AccelerationX, -1 },
-                { DataLabel.AccelerationY, -1 },
-                { DataLabel.AccelerationZ, -1 },
-                { DataLabel.Latitude, -1 },
-                { DataLabel.Longitude, -1 },
-                { DataLabel.Altitude, -1 },
-            };
             // Note that more options are available for configuring a SerialPort,
             // namely data bits, stop bits and handshake. I have no idea what those
             // are, and am very likely to ever change them in the radio modules
@@ -121,18 +109,9 @@ namespace backend.Library.Services.DataProviders
                 return;
             }
 
-            // Start processing data only after a schema has arrived
-            //_logger.LogInformation("Should");
-            if (!_schema.ContainsValue(-1))
-            {
-                if (line.Trim() != "")
-                    // Process and emit data
-                    OnDataProvided?.Invoke(WrapInEventData(line));
-            }
-            else
-            {
-                //_logger.LogWarning("Waiting for schema message");
-            }
+            if (line.Trim() != "")
+                // Process and emit data
+                OnDataProvided?.Invoke(WrapInEventData(line));
         }
 
         /// <summary>
@@ -163,13 +142,6 @@ namespace backend.Library.Services.DataProviders
                 };
                 _schema[key] = i;
             }
-
-            if (_schema.ContainsValue(-1))
-            {
-                throw new InvalidDataException(
-                    $"Schema received from serial port didn't contain entry for every {nameof(DataLabel)}"
-                );
-            }
         }
 
         /// <summary>
@@ -179,38 +151,52 @@ namespace backend.Library.Services.DataProviders
         /// <returns>An EventData object containing the message, split into individual pieces</returns>
         private EventData<Dictionary<DataLabel, string>> WrapInEventData(string message)
         {
-            _logger.LogInformation("Message: {message}", message);
-            // Separate values
-            string[] data = message.Split(':').Select(x => x.Trim().Trim('[', ']', ';')).ToArray();
-            // Build dictionary
-            Dictionary<DataLabel, string> dict = _schema
-                .Select(x => (x.Key, data[x.Value]))
-                .ToDictionary();
-            float latitude = 0f,
-                longitude = 0f,
-                altitude = 0f;
-            if (dict[DataLabel.Latitude] != "nan")
-                latitude = float.Parse(dict[DataLabel.Latitude]);
-            if (dict[DataLabel.Longitude] != "nan")
-                longitude = float.Parse(dict[DataLabel.Longitude]);
-            if (dict[DataLabel.Altitude] != "nan")
-                altitude = float.Parse(dict[DataLabel.Altitude]);
-            // Wrap data
-            return new EventData<Dictionary<DataLabel, string>>
+            try
             {
-                DataStamp = new DataStamp
+                _logger.LogInformation("Message: {message}", message);
+                // Separate values
+                string[] data = [.. message.Split(':').Select(x => x.Trim().Trim('[', ']', ';'))];
+                // Build dictionary
+                Dictionary<DataLabel, string> dict = _schema
+                    .Select(x => (x.Key, data[x.Value]))
+                    .ToDictionary();
+                float latitude = float.NaN,
+                    longitude = float.NaN,
+                    altitude = float.NaN;
+                if (dict.TryGetValue(DataLabel.Latitude, out string? lat) && lat != "nan")
+                    latitude = float.Parse(lat, CultureInfo.InvariantCulture);
+                if (dict.TryGetValue(DataLabel.Longitude, out string? lon) && lon != "nan")
+                    longitude = float.Parse(lon, CultureInfo.InvariantCulture);
+                if (dict.TryGetValue(DataLabel.Altitude, out string? alt) && alt != "nan")
+                    altitude = float.Parse(alt, CultureInfo.InvariantCulture);
+                // Wrap data
+                return new EventData<Dictionary<DataLabel, string>>
                 {
-                    Timestamp = int.Parse(dict[DataLabel.Timestamp]),
-                    // TODO: get this info from message as well
-                    Coordinates = new GPSCoords
+                    DataStamp = new DataStamp
                     {
-                        Latitude = latitude,
-                        Longitude = longitude,
-                        Altitude = altitude,
+                        Timestamp = int.Parse(
+                            dict[DataLabel.Timestamp],
+                            CultureInfo.InvariantCulture
+                        ),
+                        // TODO: get this info from message as well
+                        Coordinates = new GPSCoords
+                        {
+                            Latitude = latitude,
+                            Longitude = longitude,
+                            Altitude = altitude,
+                        },
                     },
-                },
-                Data = dict,
-            };
+                    Data = dict,
+                };
+            }
+            catch (KeyNotFoundException)
+            {
+                _logger.LogWarning(
+                    "Incomplete schema: {schema}; waiting for schema message.",
+                    _schema
+                );
+                throw;
+            }
         }
 
         public void Dispose()
