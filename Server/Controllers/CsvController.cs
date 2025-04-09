@@ -52,7 +52,7 @@ namespace backend.Server.Controllers
                         await sw.WriteAsync(payload.Data.content + ",");
                         if (payload.Data.tag == tags.Last())
                         {
-                            await sw.WriteLineAsync($"{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
+                            await sw.WriteLineAsync($"{payload.DataStamp.Timestamp}");
                             await sw.FlushAsync();
                         }
                     }
