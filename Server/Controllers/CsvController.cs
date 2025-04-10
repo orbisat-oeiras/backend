@@ -6,13 +6,10 @@ namespace backend.Server.Controllers
     /// <summary>
     /// Controller for handling CSV file creation and processing.
     /// </summary>
-    public class CsvController(
-        ILogger<CsvController> logger,
-        IEnumerable<IFinalizedProvider> eventFinalizers
-    ) : BackgroundService
+    public class CsvController : BackgroundService
     {
-        private readonly ILogger<CsvController> _logger = logger;
-        private readonly IEnumerable<IFinalizedProvider> _eventFinalizers = eventFinalizers;
+        private readonly ILogger<CsvController> _logger;
+        private readonly IEnumerable<IFinalizedProvider> _eventFinalizers;
 
         // This gets automatically run because of the BackgroundService base class.
         // Implemenation in Program.cs is done with builder.Services.AddHostedService<CsvController>() (line 107).
