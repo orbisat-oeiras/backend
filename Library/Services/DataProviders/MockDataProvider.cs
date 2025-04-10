@@ -81,7 +81,7 @@ namespace backend.Library.Services.DataProviders
                     Data = lastData,
                 }
             );
-            _logger.LogInformation("Genereted Mock Data");
+            _logger.LogInformation("Genereted Mock Data @[{now}]", now.ToString());
         }
 
         public void Dispose()

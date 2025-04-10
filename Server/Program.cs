@@ -6,6 +6,7 @@ using backend.Library.Services.DataProcessors;
 using backend.Library.Services.DataProcessors.DataExtractors;
 using backend.Library.Services.DataProviders;
 using backend.Library.Services.EventFinalizers;
+using backend.Server.Controllers;
 using NReco.Logging.File;
 using Spectre.Console;
 
@@ -93,6 +94,7 @@ namespace backend
 
             // This will register all classes annotated with ApiController
             builder.Services.AddControllers();
+
             // Set up Swagger/OpenAPI (learn more at https://aka.ms/aspnetcore/swashbuckle)
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
@@ -102,7 +104,7 @@ namespace backend
                     policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()
                 )
             );
-
+            builder.Services.AddHostedService<CsvController>();
             // Build an app from the configuration.
             WebApplication app = builder.Build();
 

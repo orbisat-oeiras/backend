@@ -20,7 +20,7 @@ namespace backend.Library.Services.EventFinalizers
             return new EventData<(string, object)>
             {
                 DataStamp = data.DataStamp,
-                Data = ("primary/temperature", data.Data),
+                Data = ("temperature", data.Data),
             };
         }
     }
