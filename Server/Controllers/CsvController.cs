@@ -31,7 +31,7 @@ namespace backend.Server.Controllers
             // Create the directory if it doesn't exist
             Directory.CreateDirectory("Data");
 
-            _logger?.LogInformation("CSV file path: {filePath}", filePath);
+            _logger.LogInformation("CSV file path: {filePath}", filePath);
             StreamWriter sw = new(filePath, true);
             List<string> tags = [];
 
