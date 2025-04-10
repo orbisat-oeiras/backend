@@ -55,10 +55,7 @@ namespace backend.Server.Controllers
                     }
                 };
             }
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                await Task.Delay(1000, cancellationToken);
-            }
+            await Task.Delay(-1, cancellationToken);
         }
     }
 }
