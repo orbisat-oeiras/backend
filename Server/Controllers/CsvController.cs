@@ -15,6 +15,15 @@ namespace backend.Server.Controllers
         // Implemenation in Program.cs is done with builder.Services.AddHostedService<CsvController>() (line 107).
         // Idk if this previous comment is necessary but it's good to know.
 
+        public CsvController(
+            ILogger<CsvController> logger,
+            IEnumerable<IFinalizedProvider> eventFinalizers
+        )
+        {
+            _logger = logger;
+            _eventFinalizers = eventFinalizers;
+        }
+
         protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
             bool hasHeader = false;
@@ -22,7 +31,7 @@ namespace backend.Server.Controllers
             // Create the directory if it doesn't exist
             Directory.CreateDirectory("Data");
 
-            _logger.LogInformation("CSV file path: {filePath}", filePath);
+            _logger?.LogInformation("CSV file path: {filePath}", filePath);
             StreamWriter sw = new(filePath, true);
             List<string> tags = [];
 
@@ -36,9 +45,7 @@ namespace backend.Server.Controllers
                         tags.Add(payload.Data.tag);
                         if (tags.Count == _eventFinalizers.Count())
                         {
-                            await sw.WriteLineAsync(
-                                $"{string.Join(",", tags).Replace("primary/", "")},Timestamp"
-                            );
+                            await sw.WriteLineAsync($"{string.Join(",", tags)},Timestamp");
                             await sw.FlushAsync();
                             hasHeader = true;
                             _logger.LogInformation("CSV header written.");
