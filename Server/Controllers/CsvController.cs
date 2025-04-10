@@ -12,9 +12,6 @@ namespace backend.Server.Controllers
         private readonly IEnumerable<IFinalizedProvider> _eventFinalizers;
 
         // This gets automatically run because of the BackgroundService base class.
-        // Implemenation in Program.cs is done with builder.Services.AddHostedService<CsvController>() (line 107).
-        // Idk if this previous comment is necessary but it's good to know.
-
         public CsvController(
             ILogger<CsvController> logger,
             IEnumerable<IFinalizedProvider> eventFinalizers
