@@ -93,7 +93,7 @@ namespace backend.Library.Services.DataProviders
             {
                 int idx = _buffer.IndexOf('\n');
                 string line = _buffer[..idx];
-                _buffer = _buffer.Remove(0, line.Length);
+                _buffer = _buffer[(idx + 1)..];
                 HandleLineReceived(line);
             }
         }
