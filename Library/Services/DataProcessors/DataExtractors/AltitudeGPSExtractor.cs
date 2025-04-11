@@ -1,4 +1,5 @@
-﻿using backend.Library.Services;
+﻿using System.Globalization;
+using backend.Library.Services;
 using backend.Library.Services.DataProviders;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -19,7 +20,7 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
         {
             float altitude = 0;
             if (data.First() != "nan")
-                altitude = float.Parse(data.First());
+                altitude = float.Parse(data.First(), CultureInfo.InvariantCulture);
             return altitude;
         }
     }

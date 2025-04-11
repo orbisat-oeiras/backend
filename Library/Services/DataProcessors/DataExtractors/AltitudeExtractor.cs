@@ -1,4 +1,5 @@
-﻿using backend.Library.Services;
+﻿using System.Globalization;
+using backend.Library.Services;
 using backend.Library.Services.DataProviders;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -24,9 +25,9 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
 
         protected override float Convert(IEnumerable<string> data)
         {
-            float pressure = float.Parse(data.First());
+            float pressure = float.Parse(data.First(), CultureInfo.InvariantCulture);
             // Add 273.15 to convert from Celsius to kelvin
-            float temperature = float.Parse(data.Last()) + 273.15f;
+            float temperature = float.Parse(data.Last(), CultureInfo.InvariantCulture) + 273.15f;
 
             // Calculate the altitude from pressure and temperature. Based on the first formula from
             // https://physics.stackexchange.com/questions/333475/how-to-calculate-altitude-from-current-temperature-and-pressure
