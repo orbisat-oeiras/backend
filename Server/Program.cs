@@ -20,7 +20,7 @@ namespace backend
             // Reset logging to the console
             builder.Logging.ClearProviders();
             builder.Logging.AddConsole();
-            builder.Logging.AddFile("Logs/log.txt");
+            builder.Logging.AddFile($"Logs/log{DateTimeOffset.UtcNow:yyyy-MM-dd-HH-mm-ss}");
 
             Console.CancelKeyPress += (sender, eventArgs) =>
             {
