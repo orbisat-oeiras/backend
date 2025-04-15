@@ -11,16 +11,16 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
     /// </summary>
     /// <typeparam name="T"></typeparam>
     public abstract class DataExtractorBase<T>
-        : DataProcessorBase<Dictionary<SerialProvider.DataLabel, string>, T>
+        : DataProcessorBase<Dictionary<LegacySerialProvider.DataLabel, string>, T>
     {
         /// <summary>
         /// Indexes of the required data pieces in the array provided by SerialProvider
         /// </summary>
-        protected SerialProvider.DataLabel[] _sourceIndexes = [];
+        protected LegacySerialProvider.DataLabel[] _sourceIndexes = [];
 
         protected DataExtractorBase(
             [FromKeyedServices(ServiceKeys.DataProvider)]
-                IDataProvider<Dictionary<SerialProvider.DataLabel, string>> provider
+                IDataProvider<Dictionary<LegacySerialProvider.DataLabel, string>> provider
         )
             : base(provider) { }
 
@@ -32,7 +32,7 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
         protected abstract T Convert(IEnumerable<string> data);
 
         protected override EventData<T> Process(
-            EventData<Dictionary<SerialProvider.DataLabel, string>> data
+            EventData<Dictionary<LegacySerialProvider.DataLabel, string>> data
         )
         {
             return new EventData<T>()

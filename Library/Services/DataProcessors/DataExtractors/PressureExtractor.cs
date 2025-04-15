@@ -12,12 +12,12 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
     {
         public PressureExtractor(
             [FromKeyedServices(ServiceKeys.DataProvider)]
-                IDataProvider<Dictionary<SerialProvider.DataLabel, string>> provider
+                IDataProvider<Dictionary<LegacySerialProvider.DataLabel, string>> provider
         )
             : base(provider)
         {
             // Extract pressure data
-            _sourceIndexes = [SerialProvider.DataLabel.Pressure];
+            _sourceIndexes = [LegacySerialProvider.DataLabel.Pressure];
         }
 
         protected override float Convert(IEnumerable<string> data) =>

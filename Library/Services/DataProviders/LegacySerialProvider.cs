@@ -10,8 +10,8 @@ namespace backend.Library.Services.DataProviders
     /// <summary>
     /// Provides data read from a serial port.
     /// </summary>
-    public sealed class SerialProvider
-        : IDataProvider<Dictionary<SerialProvider.DataLabel, string>>,
+    public sealed class LegacySerialProvider
+        : IDataProvider<Dictionary<LegacySerialProvider.DataLabel, string>>,
             IDisposable
     {
         /// <summary>
@@ -36,7 +36,7 @@ namespace backend.Library.Services.DataProviders
         public event Action<EventData<Dictionary<DataLabel, string>>>? OnDataProvided;
 
         // Logger provided by DI, used for printing information to all logging providers at once
-        private readonly ILogger<SerialProvider> _logger;
+        private readonly ILogger<LegacySerialProvider> _logger;
         private readonly SerialPort _serialPort;
         private readonly Dictionary<DataLabel, int> _schema = [];
 
@@ -51,11 +51,11 @@ namespace backend.Library.Services.DataProviders
         /// <param name="baudRate">Baud rate, in bps, of the serial port</param>
         /// <param name="parity">Parity of the serial port</param>
         /// <param name="logger"></param>
-        public SerialProvider(
+        public LegacySerialProvider(
             string portName,
             int baudRate,
             Parity parity,
-            ILogger<SerialProvider> logger
+            ILogger<LegacySerialProvider> logger
         )
         {
             _logger = logger;
