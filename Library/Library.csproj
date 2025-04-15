@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.2" />
+    <PackageReference Include="OrbiPacket" Version="1.2.1" />
     <PackageReference Include="System.IO.Ports" Version="9.0.2" />
   </ItemGroup>
 
