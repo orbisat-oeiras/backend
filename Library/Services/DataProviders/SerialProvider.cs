@@ -107,53 +107,12 @@ namespace backend.Library.Services.DataProviders
                     break;
                 }
 
-                _logger.LogInformation("Found a valid packet! Raw: {Raw}",
-                    BitConverter.ToString(extractedPacket));
-                HandleData(extractedPacket);
+                _logger.LogInformation(
+                    "Found a valid packet! Raw: {Raw}",
+                    BitConverter.ToString(extractedPacket)
+                );
             }
         }
-
-        private void HandleData(byte[] receivedPacket)
-        {
-            Packet packet = Decode.GetPacketInformation(receivedPacket);
-            OnDataProvided?.Invoke(SendData(packet));
-        }
-
-        private EventData<Dictionary<DataLabel, string>> SendData(Packet packet)
-        {
-            _logger.LogInformation($"Decoded Packet: DeviceId: {packet.DeviceId}, "
-                + $"Timestamp: {packet.Timestamp}, "
-                + $"Payload: {packet.Payload}, "
-                + $"Type: {packet.Type}");
-
-            Dictionary<DataLabel, string> dataDict = [];
-            DataLabel label = packet.DeviceId switch
-            {
-                DeviceId.Pressure => DataLabel.Pressure,
-                DeviceId.Temperature => DataLabel.Temperature,
-                DeviceId.Humidity => DataLabel.Humidity,
-                DeviceId.Unknown => DataLabel.Unknown,
-                _ => throw new NotImplementedException(),
-            };
-
-            dataDict[label] = packet.Payload.ToString();
-
-            return new EventData<Dictionary<DataLabel, string>>
-            {
-                DataStamp = new DataStamp
-                {
-                    Timestamp = (int)packet.Timestamp,
-                    Coordinates = new GPSCoords
-                    {
-                        Latitude = float.NaN,
-                        Longitude = float.NaN,
-                        Altitude = float.NaN,
-                    },
-                },
-                Data = dataDict
-            };
-        }
-
 
         public void Dispose()
         {
