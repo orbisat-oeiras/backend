@@ -45,19 +45,19 @@ namespace backend
             if (serialPortName == "Mock Serial Data")
             {
                 builder.Services.AddKeyedSingleton<
-                    IDataProvider<Dictionary<LegacySerialProvider.DataLabel, string>>,
+                    IDataProvider<Dictionary<SerialProvider.DataLabel, string>>,
                     MockDataProvider
                 >(ServiceKeys.DataProvider);
             }
             else
             {
                 builder.Services.AddKeyedSingleton<
-                    IDataProvider<Dictionary<LegacySerialProvider.DataLabel, string>>,
-                    LegacySerialProvider
+                    IDataProvider<Dictionary<SerialProvider.DataLabel, string>>,
+                    SerialProvider
                 >(
                     ServiceKeys.DataProvider,
                     (serviceProvider, _) =>
-                        ActivatorUtilities.CreateInstance<LegacySerialProvider>(
+                        ActivatorUtilities.CreateInstance<SerialProvider>(
                             serviceProvider,
                             serialPortName,
                             19200,

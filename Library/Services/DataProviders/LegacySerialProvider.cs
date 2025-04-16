@@ -15,7 +15,7 @@ namespace backend.Library.Services.DataProviders
             IDisposable
     {
         /// <summary>
-        /// Represent the index of each data piece in the list provided by a SerialProvider.
+        /// Represent the index of each data piece in the list provided by a LegacySerialProvider.
         /// </summary>
         /// <remarks>
         /// This enum must be updated to match the formatting of the data sent by the Arduino.
@@ -45,7 +45,7 @@ namespace backend.Library.Services.DataProviders
         private readonly System.Timers.Timer _timer;
 
         /// <summary>
-        /// Create a new instance of SerialProvider
+        /// Create a new instance of LegacySerialProvider
         /// </summary>
         /// <param name="portName">Name of the port from which data will be read</param>
         /// <param name="baudRate">Baud rate, in bps, of the serial port</param>

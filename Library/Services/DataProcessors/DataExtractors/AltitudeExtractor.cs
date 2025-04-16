@@ -12,14 +12,14 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
     {
         public AltitudeExtractor(
             [FromKeyedServices(ServiceKeys.DataProvider)]
-                IDataProvider<Dictionary<LegacySerialProvider.DataLabel, string>> provider
+                IDataProvider<Dictionary<SerialProvider.DataLabel, string>> provider
         )
             : base(provider)
         {
             _sourceIndexes =
             [
-                LegacySerialProvider.DataLabel.Pressure,
-                LegacySerialProvider.DataLabel.Temperature,
+                SerialProvider.DataLabel.Pressure,
+                SerialProvider.DataLabel.Temperature,
             ];
         }
 

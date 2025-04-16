@@ -9,11 +9,11 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
     {
         public AltitudeGPSExtractor(
             [FromKeyedServices(ServiceKeys.DataProvider)]
-                IDataProvider<Dictionary<LegacySerialProvider.DataLabel, string>> provider
+                IDataProvider<Dictionary<SerialProvider.DataLabel, string>> provider
         )
             : base(provider)
         {
-            _sourceIndexes = [LegacySerialProvider.DataLabel.Altitude];
+            _sourceIndexes = [SerialProvider.DataLabel.Altitude];
         }
 
         protected override float Convert(IEnumerable<string> data)

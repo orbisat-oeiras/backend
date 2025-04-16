@@ -8,12 +8,12 @@ namespace backend.Library.Services.DataProviders
     /// Provides fake data created on the fly.
     /// </summary>
     public sealed class MockDataProvider
-        : IDataProvider<Dictionary<LegacySerialProvider.DataLabel, string>>,
+        : IDataProvider<Dictionary<SerialProvider.DataLabel, string>>,
             IDisposable
     {
         private readonly Random _random = new();
         public event Action<
-            EventData<Dictionary<LegacySerialProvider.DataLabel, string>>
+            EventData<Dictionary<SerialProvider.DataLabel, string>>
         >? OnDataProvided;
         private float _altitude = 1000;
         private float _temperature = 20;
@@ -50,23 +50,23 @@ namespace backend.Library.Services.DataProviders
             _latitude = 36;
             _longitude = -25;
 
-            Dictionary<LegacySerialProvider.DataLabel, string> lastData = new Dictionary<
-                LegacySerialProvider.DataLabel,
+            Dictionary<SerialProvider.DataLabel, string> lastData = new Dictionary<
+                SerialProvider.DataLabel,
                 string
             >
             {
-                { LegacySerialProvider.DataLabel.Timestamp, now.ToString() },
-                { LegacySerialProvider.DataLabel.Pressure, _pressure.ToString() },
-                { LegacySerialProvider.DataLabel.Temperature, _temperature.ToString() },
-                { LegacySerialProvider.DataLabel.AccelerationX, _accelerationX.ToString() },
-                { LegacySerialProvider.DataLabel.AccelerationY, _accelerationY.ToString() },
-                { LegacySerialProvider.DataLabel.AccelerationZ, _accelerationZ.ToString() },
-                { LegacySerialProvider.DataLabel.Latitude, _latitude.ToString() },
-                { LegacySerialProvider.DataLabel.Longitude, _longitude.ToString() },
-                { LegacySerialProvider.DataLabel.Altitude, _altitude.ToString() },
+                { SerialProvider.DataLabel.Timestamp, now.ToString() },
+                { SerialProvider.DataLabel.Pressure, _pressure.ToString() },
+                { SerialProvider.DataLabel.Temperature, _temperature.ToString() },
+                { SerialProvider.DataLabel.AccelerationX, _accelerationX.ToString() },
+                { SerialProvider.DataLabel.AccelerationY, _accelerationY.ToString() },
+                { SerialProvider.DataLabel.AccelerationZ, _accelerationZ.ToString() },
+                { SerialProvider.DataLabel.Latitude, _latitude.ToString() },
+                { SerialProvider.DataLabel.Longitude, _longitude.ToString() },
+                { SerialProvider.DataLabel.Altitude, _altitude.ToString() },
             };
             OnDataProvided?.Invoke(
-                new EventData<Dictionary<LegacySerialProvider.DataLabel, string>>
+                new EventData<Dictionary<SerialProvider.DataLabel, string>>
                 {
                     DataStamp = new DataStamp
                     {

@@ -12,12 +12,12 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
     {
         public TemperatureExtractor(
             [FromKeyedServices(ServiceKeys.DataProvider)]
-                IDataProvider<Dictionary<LegacySerialProvider.DataLabel, string>> provider
+                IDataProvider<Dictionary<SerialProvider.DataLabel, string>> provider
         )
             : base(provider)
         {
             // Extract temperature data
-            _sourceIndexes = [LegacySerialProvider.DataLabel.Temperature];
+            _sourceIndexes = [SerialProvider.DataLabel.Temperature];
         }
 
         protected override float Convert(IEnumerable<string> data) =>
