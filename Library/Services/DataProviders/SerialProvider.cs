@@ -4,6 +4,7 @@ using System.IO.Ports;
 using System.Text.RegularExpressions;
 using backend.Library.Models;
 using backend.Library.Services.DataProcessors.DataExtractors;
+using Microsoft.AspNetCore.Builder.Extensions;
 using Microsoft.Extensions.Logging;
 using Orbipacket;
 
@@ -45,6 +46,7 @@ namespace backend.Library.Services.DataProviders
         private readonly Dictionary<DataLabel, int> _schema = [];
 
         private readonly PacketBuffer _packetBuffer = new();
+        private readonly Dictionary<DataLabel, string> _currentData;
 
         private readonly System.Timers.Timer _timer;
 
@@ -63,6 +65,7 @@ namespace backend.Library.Services.DataProviders
         )
         {
             _logger = logger;
+            _currentData = new Dictionary<DataLabel, string>();
             // Note that more options are available for configuring a SerialPort,
             // namely data bits, stop bits and handshake. I have no idea what those
             // are, and am very likely to ever change them in the radio modules
@@ -79,7 +82,7 @@ namespace backend.Library.Services.DataProviders
             _serialPort.Open();
             // Set up event listeners
             _timer = new System.Timers.Timer(500) { AutoReset = true };
-            _timer.Elapsed += ReceiveData;
+            _timer.Elapsed += ReceiveAndSendData;
             _timer.Start();
         }
 
@@ -88,28 +91,62 @@ namespace backend.Library.Services.DataProviders
         /// </summary>
         /// <param name="sender">The SerialPort object which raised the event</param>
         /// <param name="e"></param>
-        private void ReceiveData(object? sender, System.Timers.ElapsedEventArgs e)
+        private void ReceiveAndSendData(object? sender, System.Timers.ElapsedEventArgs e)
         {
             _logger.LogInformation("Receiving...");
 
             int byteNumber = _serialPort.BytesToRead;
             byte[] byteBuffer = new byte[byteNumber];
 
-            _serialPort.Read(byteBuffer, 0, byteNumber);
-            _packetBuffer.Add(byteBuffer); // keep using the persistent buffer!
-
-            while (true)
+            if (byteNumber != 0)
             {
-                byte[]? extractedPacket = _packetBuffer.ExtractFirstValidPacket();
-                if (extractedPacket == null)
-                {
-                    _logger.LogInformation("No valid packet yet.");
-                    break;
-                }
+                _serialPort.Read(byteBuffer, 0, byteNumber);
+                _packetBuffer.Add(byteBuffer);
+            }
 
-                _logger.LogInformation(
-                    "Found a valid packet! Raw: {Raw}",
-                    BitConverter.ToString(extractedPacket)
+            bool newDataArrived = false;
+            byte[]? extractedPacket;
+
+            // Use the same approach I used in testing
+            while ((extractedPacket = _packetBuffer.ExtractFirstValidPacket()) != null)
+            {
+                Packet packet = Decode.GetPacketInformation(extractedPacket);
+                Console.WriteLine(
+                    "Extracted a packet: Device: " + packet.DeviceId + " Payload: " + packet.Payload
+                );
+
+                DataLabel label = packet.DeviceId switch
+                {
+                    DeviceId.Pressure => DataLabel.Pressure,
+                    DeviceId.Temperature => DataLabel.Temperature,
+                    DeviceId.Humidity => DataLabel.Humidity,
+                    DeviceId.Unknown => DataLabel.Unknown,
+                    _ => throw new NotImplementedException(),
+                };
+                _currentData[label] = packet.Payload.ToString();
+
+                newDataArrived = true;
+            }
+            if (newDataArrived)
+            {
+                Dictionary<DataLabel, string> dict;
+                dict = new(_currentData);
+                _currentData.Clear();
+
+                int timestamp = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                GPSCoords coords = new()
+                {
+                    Latitude = float.NaN,
+                    Longitude = float.NaN,
+                    Altitude = float.NaN,
+                };
+
+                OnDataProvided?.Invoke(
+                    new EventData<Dictionary<DataLabel, string>>
+                    {
+                        DataStamp = new DataStamp { Timestamp = timestamp, Coordinates = coords },
+                        Data = dict,
+                    }
                 );
             }
         }
