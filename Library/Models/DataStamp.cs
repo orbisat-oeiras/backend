@@ -9,7 +9,7 @@
         /// Milliseconds since the Arduino was initialized, registered
         /// when the data was sent.
         /// </summary>
-        public long Timestamp { get; init; }
+        public double Timestamp { get; init; }
 
         /// <summary>
         /// Coordinates registered by the GPS when the data was sent

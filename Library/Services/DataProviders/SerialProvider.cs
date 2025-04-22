@@ -133,7 +133,8 @@ namespace backend.Library.Services.DataProviders
                 dict = new(_currentData);
                 _currentData.Clear();
 
-                int timestamp = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                // Timestamp in Unix seconds with 3 decimal places
+                double timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
                 GPSCoords coords = new()
                 {
                     Latitude = float.NaN,
