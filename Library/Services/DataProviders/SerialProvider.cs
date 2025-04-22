@@ -141,11 +141,6 @@ namespace backend.Library.Services.DataProviders
                 }
                 Dictionary<DataLabel, string> dict;
                 dict = new(_currentData);
-                // After building dict
-                _logger.LogInformation(
-                    "Current data dict: "
-                        + string.Join(", ", dict.Select(kv => $"{kv.Key}={kv.Value}"))
-                );
                 _currentData.Clear();
 
                 // Timestamp in Unix seconds with 3 decimal places
