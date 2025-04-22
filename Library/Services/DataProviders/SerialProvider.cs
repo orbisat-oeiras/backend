@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO.Ports;
 using System.Text.RegularExpressions;
 using backend.Library.Models;
+using backend.Library.Services.DataProcessors;
 using backend.Library.Services.DataProcessors.DataExtractors;
 using Microsoft.AspNetCore.Builder.Extensions;
 using Microsoft.Extensions.Logging;
@@ -44,6 +45,7 @@ namespace backend.Library.Services.DataProviders
         private readonly ILogger<SerialProvider> _logger;
         private readonly SerialPort _serialPort;
         private readonly Dictionary<DataLabel, int> _schema = [];
+        private readonly PacketResync packetResync = new();
 
         private readonly PacketBuffer _packetBuffer = new();
         private readonly Dictionary<DataLabel, string> _currentData;
@@ -65,7 +67,7 @@ namespace backend.Library.Services.DataProviders
         )
         {
             _logger = logger;
-            _currentData = new Dictionary<DataLabel, string>();
+            _currentData = [];
             // Note that more options are available for configuring a SerialPort,
             // namely data bits, stop bits and handshake. I have no idea what those
             // are, and am very likely to ever change them in the radio modules
@@ -114,21 +116,29 @@ namespace backend.Library.Services.DataProviders
                 Console.WriteLine(
                     "Extracted a packet: Device: " + packet.DeviceId + " Payload: " + packet.Payload
                 );
-
-                DataLabel label = packet.DeviceId switch
-                {
-                    DeviceId.Pressure => DataLabel.Pressure,
-                    DeviceId.Temperature => DataLabel.Temperature,
-                    DeviceId.Humidity => DataLabel.Humidity,
-                    DeviceId.Unknown => DataLabel.Unknown,
-                    _ => throw new NotImplementedException(),
-                };
-                _currentData[label] = packet.Payload.ToString();
-
+                packetResync.AddPacket(packet);
                 newDataArrived = true;
             }
             if (newDataArrived)
             {
+                List<Packet>? list;
+                list = packetResync.GetNextGroup();
+                if (list != null)
+                {
+                    foreach (Packet packet in list)
+                    {
+                        DataLabel label = packet.DeviceId switch
+                        {
+                            DeviceId.Pressure => DataLabel.Pressure,
+                            DeviceId.Temperature => DataLabel.Temperature,
+                            DeviceId.Humidity => DataLabel.Humidity,
+                            DeviceId.Unknown => DataLabel.Unknown,
+                            _ => throw new NotImplementedException(),
+                        };
+                        // TODO: Remove this .ToString() and treat every payload as byte arrays
+                        _currentData[label] = packet.Payload.ToString();
+                    }
+                }
                 Dictionary<DataLabel, string> dict;
                 dict = new(_currentData);
                 _currentData.Clear();
