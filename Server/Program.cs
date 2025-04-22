@@ -89,6 +89,10 @@ namespace backend
                 .AddKeyedSingleton<IDataProvider<float>, VelocityProcessor>(
                     ServiceKeys.VelocityProcessor
                 )
+                .AddFinalizer<HumidityFinalizer>()
+                .AddKeyedSingleton<IDataProvider<float>, HumidityExtractor>(
+                    ServiceKeys.HumidityExtractor
+                )
                 .AddFinalizer<VelocityFinalizer>();
 
             // This will register all classes annotated with ApiController
