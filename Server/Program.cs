@@ -70,6 +70,10 @@ namespace backend
                     ServiceKeys.PressureExtractor
                 )
                 .AddFinalizer<PressureFinalizer>()
+                .AddKeyedSingleton<IDataProvider<float>, HumidityExtractor>(
+                    ServiceKeys.HumidityExtractor
+                )
+                .AddFinalizer<HumidityFinalizer>()
                 .AddKeyedSingleton<IDataProvider<float>, TemperatureExtractor>(
                     ServiceKeys.TemperatureExtractor
                 )
@@ -88,10 +92,6 @@ namespace backend
                 .AddFinalizer<AltitudeDeltaFinalizer>()
                 .AddKeyedSingleton<IDataProvider<float>, VelocityProcessor>(
                     ServiceKeys.VelocityProcessor
-                )
-                .AddFinalizer<HumidityFinalizer>()
-                .AddKeyedSingleton<IDataProvider<float>, HumidityExtractor>(
-                    ServiceKeys.HumidityExtractor
                 )
                 .AddFinalizer<VelocityFinalizer>();
 
