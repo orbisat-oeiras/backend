@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace backend.Library.Services.DataProcessors.DataExtractors
 {
     /// <summary>
-    /// Extracts pressure data from SerialProvider data.
+    /// Extracts humidity data from SerialProvider data.
     /// </summary>
     public class HumidityExtractor : DataExtractorBase<float>
     {
@@ -16,7 +16,7 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
         )
             : base(provider)
         {
-            // Extract pressure data
+            // Extract humidity data
             _sourceIndexes = [SerialProvider.DataLabel.Humidity];
         }
 
