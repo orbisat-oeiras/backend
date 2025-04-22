@@ -8,7 +8,7 @@ namespace backend.Library.Services.EventFinalizers
     public class HumidityFinalizer : EventFinalizerBase<float>
     {
         public HumidityFinalizer(
-            [FromKeyedServices(ServiceKeys.PressureExtractor)] IDataProvider<float> provider
+            [FromKeyedServices(ServiceKeys.HumidityExtractor)] IDataProvider<float> provider
         )
             : base(provider) { }
 
