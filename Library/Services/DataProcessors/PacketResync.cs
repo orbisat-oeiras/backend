@@ -17,7 +17,7 @@ namespace backend.Library.Services.DataProcessors
             _resyncBuffer.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
         }
 
-        public List<Packet>? GetNextGroup()
+        public List<Packet> GetNextGroup()
         {
             if (_resyncBuffer.Count == 0)
                 return null;

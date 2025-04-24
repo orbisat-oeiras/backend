@@ -174,7 +174,7 @@ namespace backend.Library.Services.DataProviders
                 {
                     DataStamp = new DataStamp
                     {
-                        Timestamp = int.Parse(
+                        Timestamp = ulong.Parse(
                             dict[DataLabel.Timestamp],
                             CultureInfo.InvariantCulture
                         ),

@@ -70,7 +70,7 @@ namespace backend.Library.Services.DataProviders
                 {
                     DataStamp = new DataStamp
                     {
-                        Timestamp = now,
+                        Timestamp = (ulong)now,
                         Coordinates = new GPSCoords
                         {
                             Latitude = _latitude,

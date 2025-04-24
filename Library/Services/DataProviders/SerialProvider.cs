@@ -122,6 +122,7 @@ namespace backend.Library.Services.DataProviders
             if (newDataArrived)
             {
                 List<Packet>? list;
+                _logger.LogInformation("Getting next group of packets...");
                 list = packetResync.GetNextGroup();
                 if (list != null)
                 {
@@ -143,8 +144,7 @@ namespace backend.Library.Services.DataProviders
                 dict = new(_currentData);
                 _currentData.Clear();
 
-                // Timestamp in Unix seconds with 3 decimal places
-                double timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
+                ulong timestamp = list[0].Timestamp;
                 GPSCoords coords = new()
                 {
                     Latitude = float.NaN,

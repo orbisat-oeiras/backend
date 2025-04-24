@@ -50,7 +50,6 @@ namespace backend.Server.Controllers
             // Set the response headers; this tells the client we're initiating SSE
             Response.Headers.ContentType = "text/event-stream";
             Response.Headers.CacheControl = "no-cache";
-            Response.Headers.Append("Connection", "keep-alive");
 
             TaskCompletionSource tcs = new();
             CancellationToken cancellationToken = HttpContext.RequestAborted;
@@ -64,7 +63,7 @@ namespace backend.Server.Controllers
                     {
                         // Leaving these here just in case...
                         //_logger.LogInformation("Sending event provided by {evtFinalizerType}.", eventFinalizer.GetType().Name);
-                        _logger.LogDebug(
+                        _logger.LogInformation(
                             "Tag: {tag}\nContent: {content}",
                             payload.Data.tag,
                             payload.Data.content
@@ -76,7 +75,7 @@ namespace backend.Server.Controllers
                         // Convert the content to JSON
                         await Response.WriteJSONAsync(payload.Data.content);
                         await Response.WriteAsync("@");
-                        await Response.WriteJSONAsync(payload.DataStamp);
+                        await Response.WriteJSONAsync(payload.DataStamp.Timestamp.ToString());
                         await Response.WriteAsync("\n\n");
                         await Response.Body.FlushAsync();
                     }
