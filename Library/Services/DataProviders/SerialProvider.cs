@@ -165,9 +165,10 @@ namespace backend.Library.Services.DataProviders
                                 break;
                         }
                         _logger.LogInformation(
-                            "Label: {label} Value: {value}",
+                            "Label: {label} Value: {value} Timestamp: {timestamp}",
                             label.ToString(),
-                            _currentData[label]
+                            _currentData[label],
+                            packet.Timestamp.ToString(CultureInfo.InvariantCulture)
                         );
                     }
                 }
