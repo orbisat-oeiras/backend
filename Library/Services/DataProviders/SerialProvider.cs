@@ -130,9 +130,10 @@ namespace backend.Library.Services.DataProviders
                     {
                         DataLabel label = packet.DeviceId switch
                         {
-                            DeviceId.Pressure => DataLabel.Pressure,
-                            DeviceId.Temperature => DataLabel.Temperature,
-                            DeviceId.Humidity => DataLabel.Humidity,
+                            DeviceId.PressureSensor => DataLabel.Pressure,
+                            DeviceId.TemperatureSensor => DataLabel.Temperature,
+                            DeviceId.HumiditySensor => DataLabel.Humidity,
+                            DeviceId.System => DataLabel.System,
                             DeviceId.Unknown => DataLabel.Unknown,
                             _ => throw new NotImplementedException(),
                         };
