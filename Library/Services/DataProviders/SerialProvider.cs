@@ -141,8 +141,6 @@ namespace backend.Library.Services.DataProviders
                             DeviceId.GPS => DataLabel.GPSData,
                             _ => throw new NotImplementedException(),
                         };
-                        // TODO: Remove this .ToString() and treat every payload as byte arrays
-                        // _currentData[label] = packet.Payload.ToString();
                         switch (label)
                         {
                             case DataLabel.System:
@@ -198,6 +196,7 @@ namespace backend.Library.Services.DataProviders
                         }
                     }
                 }
+
                 Dictionary<DataLabel, string> dict;
                 dict = new(_currentData);
 
