@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Globalization;
 using System.IO.Ports;
+using System.Text;
 using System.Text.RegularExpressions;
 using backend.Library.Models;
 using backend.Library.Services.DataProcessors;
@@ -26,6 +27,7 @@ namespace backend.Library.Services.DataProviders
         /// </remarks>
         public enum DataLabel
         {
+            System,
             Timestamp,
             Pressure,
             Temperature,
@@ -116,6 +118,7 @@ namespace backend.Library.Services.DataProviders
                 Console.WriteLine(
                     "Extracted a packet: Device: " + packet.DeviceId + " Payload: " + packet.Payload
                 );
+                _logger.LogInformation("Timestamp: {timestamp}", packet.Timestamp.ToString());
                 packetResync.AddPacket(packet);
                 newDataArrived = true;
             }
@@ -138,7 +141,35 @@ namespace backend.Library.Services.DataProviders
                             _ => throw new NotImplementedException(),
                         };
                         // TODO: Remove this .ToString() and treat every payload as byte arrays
-                        _currentData[label] = packet.Payload.ToString();
+                        // _currentData[label] = packet.Payload.ToString();
+                        switch (label)
+                        {
+                            case DataLabel.System:
+                                _currentData[DataLabel.System] = Encoding.ASCII.GetString(
+                                    packet.Payload.Value
+                                );
+                                break;
+                            case DataLabel.Pressure:
+                                _currentData[DataLabel.Pressure] = BitConverter
+                                    .ToSingle(packet.Payload.Value, 0)
+                                    .ToString(CultureInfo.InvariantCulture);
+                                break;
+                            case DataLabel.Temperature:
+                                _currentData[DataLabel.Temperature] = BitConverter
+                                    .ToSingle(packet.Payload.Value, 0)
+                                    .ToString(CultureInfo.InvariantCulture);
+                                break;
+                            case DataLabel.Humidity:
+                                _currentData[DataLabel.Humidity] = BitConverter
+                                    .ToSingle(packet.Payload.Value, 0)
+                                    .ToString(CultureInfo.InvariantCulture);
+                                break;
+                        }
+                        _logger.LogInformation(
+                            "Label: {label} Value: {value}",
+                            label.ToString(),
+                            _currentData[label]
+                        );
                     }
                 }
                 Dictionary<DataLabel, string> dict;
