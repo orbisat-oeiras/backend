@@ -6,6 +6,7 @@ using backend.Library.Services.DataProcessors;
 using backend.Library.Services.DataProcessors.DataExtractors;
 using backend.Library.Services.DataProviders;
 using backend.Library.Services.EventFinalizers;
+using Microsoft.Extensions.Logging.Console;
 using NReco.Logging.File;
 using Spectre.Console;
 
@@ -19,7 +20,10 @@ namespace backend
             WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
             // Reset logging to the console
             builder.Logging.ClearProviders();
-            builder.Logging.AddConsole();
+            builder.Logging.AddSimpleConsole(options =>
+            {
+                options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss]";
+            });
             builder.Logging.AddFile($"Logs/log{DateTimeOffset.UtcNow:yyyy-MM-dd-HH-mm-ss}");
 
             Console.CancelKeyPress += (sender, eventArgs) =>
