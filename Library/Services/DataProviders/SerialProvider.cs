@@ -38,6 +38,7 @@ namespace backend.Library.Services.DataProviders
             Latitude,
             Longitude,
             Altitude,
+            GPSData,
             Unknown,
         }
 
@@ -137,6 +138,7 @@ namespace backend.Library.Services.DataProviders
                             DeviceId.HumiditySensor => DataLabel.Humidity,
                             DeviceId.System => DataLabel.System,
                             DeviceId.Unknown => DataLabel.Unknown,
+                            DeviceId.GPS => DataLabel.GPSData,
                             _ => throw new NotImplementedException(),
                         };
                         // TODO: Remove this .ToString() and treat every payload as byte arrays
@@ -163,26 +165,70 @@ namespace backend.Library.Services.DataProviders
                                     .ToSingle(packet.Payload.Value, 0)
                                     .ToString(CultureInfo.InvariantCulture);
                                 break;
+                            case DataLabel.GPSData:
+                                _currentData[DataLabel.Latitude] = BitConverter
+                                    .ToDouble(packet.Payload.Value, 0)
+                                    .ToString(CultureInfo.InvariantCulture);
+                                _currentData[DataLabel.Longitude] = BitConverter
+                                    .ToDouble(packet.Payload.Value, 8)
+                                    .ToString(CultureInfo.InvariantCulture);
+                                _currentData[DataLabel.Altitude] = BitConverter
+                                    .ToSingle(packet.Payload.Value, 16)
+                                    .ToString(CultureInfo.InvariantCulture);
+                                break;
                         }
-                        _logger.LogInformation(
-                            "Label: {label} Value: {value} Timestamp: {timestamp}",
-                            label.ToString(),
-                            _currentData[label],
-                            packet.Timestamp.ToString(CultureInfo.InvariantCulture)
-                        );
+                        if (label == DataLabel.GPSData)
+                        {
+                            _logger.LogInformation(
+                                "GPS Data -> Latitude: {lat}, Longitude: {lon}, Altitude: {alt}, Timestamp: {timestamp}",
+                                _currentData[DataLabel.Latitude],
+                                _currentData[DataLabel.Longitude],
+                                _currentData[DataLabel.Altitude],
+                                packet.Timestamp.ToString(CultureInfo.InvariantCulture)
+                            );
+                        }
+                        else
+                        {
+                            _logger.LogInformation(
+                                "Label: {label} Value: {value} Timestamp: {timestamp}",
+                                label.ToString(),
+                                _currentData[label],
+                                packet.Timestamp.ToString(CultureInfo.InvariantCulture)
+                            );
+                        }
                     }
                 }
                 Dictionary<DataLabel, string> dict;
                 dict = new(_currentData);
-                _currentData.Clear();
 
                 ulong timestamp = list[0].Timestamp;
-                GPSCoords coords = new()
+
+                GPSCoords coords;
+
+                if (
+                    _currentData.TryGetValue(DataLabel.Latitude, out string? latStr)
+                    && _currentData.TryGetValue(DataLabel.Longitude, out string? lonStr)
+                    && _currentData.TryGetValue(DataLabel.Altitude, out string? altStr)
+                )
                 {
-                    Latitude = float.NaN,
-                    Longitude = float.NaN,
-                    Altitude = float.NaN,
-                };
+                    coords = new GPSCoords
+                    {
+                        Latitude = float.Parse(latStr, CultureInfo.InvariantCulture),
+                        Longitude = float.Parse(lonStr, CultureInfo.InvariantCulture),
+                        Altitude = float.Parse(altStr, CultureInfo.InvariantCulture),
+                    };
+                }
+                else
+                {
+                    coords = new GPSCoords
+                    {
+                        Latitude = float.NaN,
+                        Longitude = float.NaN,
+                        Altitude = float.NaN,
+                    };
+                }
+
+                _currentData.Clear();
 
                 OnDataProvided?.Invoke(
                     new EventData<Dictionary<DataLabel, string>>
