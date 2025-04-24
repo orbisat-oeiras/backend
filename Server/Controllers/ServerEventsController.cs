@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Globalization;
+using System.Text.Json;
 using System.Threading.Tasks;
 using backend.Library.Extensions;
 using backend.Library.Models;
@@ -75,11 +76,11 @@ namespace backend.Server.Controllers
                         // Convert the content to JSON
                         await Response.WriteJSONAsync(payload.Data.content);
                         await Response.WriteAsync("@");
-                        await Response.WriteJSONAsync(payload.DataStamp.Timestamp.ToString());
+                        await Response.WriteJSONAsync(payload.DataStamp);
                         await Response.WriteAsync("\n\n");
                         await Response.Body.FlushAsync();
                     }
-                    catch (System.ObjectDisposedException)
+                    catch (ObjectDisposedException)
                     {
                         _logger.LogWarning(
                             "Error in SSE connection. The client may have disconnected."
