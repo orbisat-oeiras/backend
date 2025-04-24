@@ -118,7 +118,6 @@ namespace backend.Library.Services.DataProviders
                 Console.WriteLine(
                     "Extracted a packet: Device: " + packet.DeviceId + " Payload: " + packet.Payload
                 );
-                _logger.LogInformation("Timestamp: {timestamp}", packet.Timestamp.ToString());
                 packetResync.AddPacket(packet);
                 newDataArrived = true;
             }
