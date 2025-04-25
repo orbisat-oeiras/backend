@@ -14,7 +14,9 @@ namespace backend.Library.Services.DataProcessors
 
         public void AddPacket(Packet packet)
         {
-            ulong currentTimestamp = (ulong)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1_000_000);
+            ulong currentTimestamp = (ulong)(
+                DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1_000_000
+            );
             const ulong STALE_THRESHOLD_NANOSECONDS = 1_500_000_000; // 1.5 seconds
             if (currentTimestamp - packet.Timestamp > STALE_THRESHOLD_NANOSECONDS)
             {
@@ -32,13 +34,15 @@ namespace backend.Library.Services.DataProcessors
             _resyncBuffer.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
             ulong firstTimestamp = _resyncBuffer[0].Timestamp;
 
-            List<Packet> group = [.. _resyncBuffer.TakeWhile(p => p.Timestamp - firstTimestamp <= WINDOW_NANOSECONDS)];
+            List<Packet> group =
+            [
+                .. _resyncBuffer.TakeWhile(p => p.Timestamp - firstTimestamp <= WINDOW_NANOSECONDS),
+            ];
 
             foreach (Packet packet in group)
                 _resyncBuffer.Remove(packet);
 
             return group;
         }
-
     }
 }
