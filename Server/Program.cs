@@ -69,38 +69,62 @@ namespace backend
                         )
                 );
             }
-            builder.Services.AddKeyedSingleton<IDataProvider<float>, PressureExtractor>(
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, PressureExtractor>(
                     ServiceKeys.PressureExtractor
-                ).AddFinalizer<PressureFinalizer>();
+                )
+                .AddFinalizer<PressureFinalizer>();
 
-            builder.Services.AddKeyedSingleton<IDataProvider<float>, HumidityExtractor>(
-                ServiceKeys.HumidityExtractor
-            ).AddFinalizer<HumidityFinalizer>();
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, HumidityExtractor>(
+                    ServiceKeys.HumidityExtractor
+                )
+                .AddFinalizer<HumidityFinalizer>();
 
-            builder.Services.AddKeyedSingleton<IDataProvider<float>, TemperatureExtractor>(
-                ServiceKeys.TemperatureExtractor
-            )
-            .AddFinalizer<TemperatureFinalizer>();
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, TemperatureExtractor>(
+                    ServiceKeys.TemperatureExtractor
+                )
+                .AddFinalizer<TemperatureFinalizer>();
 
-            builder.Services.AddKeyedSingleton<IDataProvider<float>, AltitudeExtractor>(
-                ServiceKeys.AltitudeExtractor
-            )
-            .AddFinalizer<AltitudeFinalizer>();
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, AltitudeExtractor>(
+                    ServiceKeys.AltitudeExtractor
+                )
+                .AddFinalizer<AltitudeFinalizer>();
 
-            builder.Services.AddKeyedSingleton<IDataProvider<float>, AltitudeGPSExtractor>(
-                ServiceKeys.AltitudeGPSExtractor
-            )
-            .AddFinalizer<AltitudeGPSFinalizer>();
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, AltitudeGPSExtractor>(
+                    ServiceKeys.AltitudeGPSExtractor
+                )
+                .AddFinalizer<AltitudeGPSFinalizer>();
 
-            builder.Services.AddKeyedSingleton<IDataProvider<float>, AltitudeDeltaProcessor>(
-                ServiceKeys.AltitudeDeltaProcessor
-            )
-            .AddFinalizer<AltitudeDeltaFinalizer>();
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, AltitudeDeltaProcessor>(
+                    ServiceKeys.AltitudeDeltaProcessor
+                )
+                .AddFinalizer<AltitudeDeltaFinalizer>();
 
-            builder.Services.AddKeyedSingleton<IDataProvider<float>, VelocityProcessor>(
-                ServiceKeys.VelocityProcessor
-            )
-            .AddFinalizer<VelocityFinalizer>();
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, VelocityProcessor>(
+                    ServiceKeys.VelocityProcessor
+                )
+                .AddFinalizer<VelocityFinalizer>();
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, AccelerationXExtractor>(
+                    ServiceKeys.AccelerationXExtractor
+                )
+                .AddFinalizer<AccelerationXFinalizer>();
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, AccelerationYExtractor>(
+                    ServiceKeys.AccelerationYExtractor
+                )
+                .AddFinalizer<AccelerationYFinalizer>();
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, AccelerationZExtractor>(
+                    ServiceKeys.AccelerationZExtractor
+                )
+                .AddFinalizer<AccelerationZFinalizer>();
 
             // This will register all classes annotated with ApiController
             builder.Services.AddControllers();
