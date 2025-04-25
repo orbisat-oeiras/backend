@@ -10,5 +10,8 @@
         AltitudeDeltaProcessor,
         VelocityProcessor,
         HumidityExtractor,
+        AccelerationXExtractor,
+        AccelerationYExtractor,
+        AccelerationZExtractor,
     }
 }

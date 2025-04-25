@@ -39,6 +39,7 @@ namespace backend.Library.Services.DataProviders
             Longitude,
             Altitude,
             GPSData,
+            AccelerationData,
             Unknown,
         }
 
@@ -130,7 +131,7 @@ namespace backend.Library.Services.DataProviders
                     {
                         _logger.LogInformation(
                             "Extracted packet: {packet}",
-                            BitConverter.ToString(extractedPacket.Skip(2).ToArray()).Replace("-", "")
+                            BitConverter.ToString([.. extractedPacket.Skip(2)]).Replace("-", "")
                         );
                         Packet packet = Decode.GetPacketInformation(extractedPacket);
                         packetResync.AddPacket(packet);
@@ -162,15 +163,22 @@ namespace backend.Library.Services.DataProviders
                                 DeviceId.System => DataLabel.System,
                                 DeviceId.Unknown => DataLabel.Unknown,
                                 DeviceId.GPS => DataLabel.GPSData,
+                                DeviceId.Accelerometer => DataLabel.AccelerationData,
                                 _ => throw new NotImplementedException(),
                             };
 
-                            _logger.LogInformation("Processing label: {label}, Data: {data}", label, BitConverter.ToString(packet.Payload.Value));
+                            _logger.LogInformation(
+                                "Processing label: {label}, Data: {data}",
+                                label,
+                                BitConverter.ToString(packet.Payload.Value)
+                            );
 
                             switch (label)
                             {
                                 case DataLabel.System:
-                                    _currentData[DataLabel.System] = Encoding.ASCII.GetString(packet.Payload.Value);
+                                    _currentData[DataLabel.System] = Encoding.ASCII.GetString(
+                                        packet.Payload.Value
+                                    );
                                     break;
                                 case DataLabel.Pressure:
                                     _currentData[DataLabel.Pressure] = BitConverter
@@ -198,6 +206,17 @@ namespace backend.Library.Services.DataProviders
                                         .ToSingle(packet.Payload.Value, 16)
                                         .ToString(CultureInfo.InvariantCulture);
                                     break;
+                                case DataLabel.AccelerationData:
+                                    _currentData[DataLabel.AccelerationX] = BitConverter
+                                        .ToSingle(packet.Payload.Value, 0)
+                                        .ToString(CultureInfo.InvariantCulture);
+                                    _currentData[DataLabel.AccelerationY] = BitConverter
+                                        .ToSingle(packet.Payload.Value, 4)
+                                        .ToString(CultureInfo.InvariantCulture);
+                                    _currentData[DataLabel.AccelerationZ] = BitConverter
+                                        .ToSingle(packet.Payload.Value, 8)
+                                        .ToString(CultureInfo.InvariantCulture);
+                                    break;
                             }
                         }
 
@@ -206,17 +225,39 @@ namespace backend.Library.Services.DataProviders
 
                         GPSCoords coords = new()
                         {
-                            Latitude = _currentData.TryGetValue(DataLabel.Latitude, out string? latStr) ? float.Parse(latStr, CultureInfo.InvariantCulture) : float.NaN,
-                            Longitude = _currentData.TryGetValue(DataLabel.Longitude, out string? lonStr) ? float.Parse(lonStr, CultureInfo.InvariantCulture) : float.NaN,
-                            Altitude = _currentData.TryGetValue(DataLabel.Altitude, out string? altStr) ? float.Parse(altStr, CultureInfo.InvariantCulture) : float.NaN,
+                            Latitude = _currentData.TryGetValue(
+                                DataLabel.Latitude,
+                                out string? latStr
+                            )
+                                ? float.Parse(latStr, CultureInfo.InvariantCulture)
+                                : float.NaN,
+                            Longitude = _currentData.TryGetValue(
+                                DataLabel.Longitude,
+                                out string? lonStr
+                            )
+                                ? float.Parse(lonStr, CultureInfo.InvariantCulture)
+                                : float.NaN,
+                            Altitude = _currentData.TryGetValue(
+                                DataLabel.Altitude,
+                                out string? altStr
+                            )
+                                ? float.Parse(altStr, CultureInfo.InvariantCulture)
+                                : float.NaN,
                         };
 
-                        _logger.LogInformation("Data sent to server: {data}", string.Join(", ", dict));
+                        _logger.LogInformation(
+                            "Data sent to server: {data}",
+                            string.Join(", ", dict)
+                        );
 
                         OnDataProvided?.Invoke(
                             new EventData<Dictionary<DataLabel, string>>
                             {
-                                DataStamp = new DataStamp { Timestamp = timestamp, Coordinates = coords },
+                                DataStamp = new DataStamp
+                                {
+                                    Timestamp = timestamp,
+                                    Coordinates = coords,
+                                },
                                 Data = dict,
                             }
                         );
@@ -230,7 +271,6 @@ namespace backend.Library.Services.DataProviders
                 }
             }
         }
-
 
         public void Dispose()
         {
