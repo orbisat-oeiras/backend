@@ -1,4 +1,5 @@
 // TODO: Resync packets that come in different timestamps
+using System.Security.Cryptography.X509Certificates;
 using System.Text.RegularExpressions;
 using System.Timers;
 using Microsoft.Extensions.Logging;
@@ -13,43 +14,31 @@ namespace backend.Library.Services.DataProcessors
 
         public void AddPacket(Packet packet)
         {
+            ulong currentTimestamp = (ulong)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1_000_000);
+            const ulong STALE_THRESHOLD_NANOSECONDS = 1_500_000_000; // 1.5 seconds
+            if (currentTimestamp - packet.Timestamp > STALE_THRESHOLD_NANOSECONDS)
+            {
+                return;
+            }
+
             _resyncBuffer.Add(packet);
-            _resyncBuffer.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
         }
 
         public List<Packet> GetNextGroup()
         {
             if (_resyncBuffer.Count == 0)
-                return null;
+                return [];
 
+            _resyncBuffer.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
             ulong firstTimestamp = _resyncBuffer[0].Timestamp;
-            List<Packet> group =
-            [
-                .. _resyncBuffer.TakeWhile(packet =>
-                    packet.Timestamp - firstTimestamp <= WINDOW_NANOSECONDS
-                ),
-            ];
 
-            // Only return a group if it contains more than one packet,
-            // or if the oldest packet has been waiting "too long" (e.g., > 2s)
-            if (group.Count > 1 || IsOldestPacketStale(group))
-            {
-                // Remove received packets from the buffer
-                foreach (Packet? p in group)
-                    _resyncBuffer.Remove(p);
-                return group;
-            }
+            List<Packet> group = [.. _resyncBuffer.TakeWhile(p => p.Timestamp - firstTimestamp <= WINDOW_NANOSECONDS)];
 
-            return null;
+            foreach (Packet packet in group)
+                _resyncBuffer.Remove(packet);
+
+            return group;
         }
 
-        private static bool IsOldestPacketStale(List<Packet> group)
-        {
-            ulong now = (ulong)(
-                (DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0)).TotalMilliseconds * 1000000
-            ); // Convert to nanoseconds
-
-            return (now - group[0].Timestamp) > 2_000_000_000; // 2 seconds
-        }
     }
 }
