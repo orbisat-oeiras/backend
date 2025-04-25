@@ -49,7 +49,8 @@ namespace backend.Library.Services.DataProviders
         private readonly SerialPort _serialPort;
         private readonly Dictionary<DataLabel, int> _schema = [];
         private readonly PacketResync packetResync = new();
-
+        private readonly object _lock = new();
+        private bool _isProcessing;
         private readonly PacketBuffer _packetBuffer = new();
         private readonly Dictionary<DataLabel, string> _currentData;
 
@@ -85,6 +86,7 @@ namespace backend.Library.Services.DataProviders
             };
             // Open the port
             _serialPort.Open();
+
             // Set up event listeners
             _timer = new System.Timers.Timer(500) { AutoReset = true };
             _timer.Elapsed += ReceiveAndSendData;
@@ -98,146 +100,137 @@ namespace backend.Library.Services.DataProviders
         /// <param name="e"></param>
         private void ReceiveAndSendData(object? sender, System.Timers.ElapsedEventArgs e)
         {
-            _logger.LogInformation("Receiving...");
-
-            int byteNumber = _serialPort.BytesToRead;
-            byte[] byteBuffer = new byte[byteNumber];
-
-            if (byteNumber != 0)
+            lock (_lock)
             {
-                _serialPort.Read(byteBuffer, 0, byteNumber);
-                _packetBuffer.Add(byteBuffer);
-            }
-
-            bool newDataArrived = false;
-            byte[]? extractedPacket;
-
-            // Use the same approach I used in testing
-            while ((extractedPacket = _packetBuffer.ExtractFirstValidPacket()) != null)
-            {
-                Packet packet = Decode.GetPacketInformation(extractedPacket);
-                Console.WriteLine(
-                    "Extracted a packet: Device: " + packet.DeviceId + " Payload: " + packet.Payload
-                );
-                packetResync.AddPacket(packet);
-                newDataArrived = true;
-            }
-            if (newDataArrived)
-            {
-                List<Packet>? list;
-                _logger.LogInformation("Getting next group of packets...");
-                list = packetResync.GetNextGroup();
-                if (list != null)
+                _timer.Start();
+                try
                 {
-                    foreach (Packet packet in list)
+                    if (_isProcessing)
                     {
-                        DataLabel label = packet.DeviceId switch
+                        return;
+                    }
+
+                    _isProcessing = true;
+                    _timer.Stop();
+                    _logger.LogInformation("Receiving...");
+
+                    int byteNumber = _serialPort.BytesToRead;
+                    byte[] byteBuffer = new byte[byteNumber];
+                    if (byteNumber != 0)
+                    {
+                        _serialPort.Read(byteBuffer, 0, byteNumber);
+                        _packetBuffer.Add(byteBuffer);
+                    }
+
+                    bool newDataArrived = false;
+                    byte[]? extractedPacket;
+
+                    // Use the same approach I used in testing
+                    while ((extractedPacket = _packetBuffer.ExtractFirstValidPacket()) != null)
+                    {
+                        _logger.LogInformation(
+                            "Extracted packet: {packet}",
+                            BitConverter.ToString(extractedPacket.Skip(2).ToArray()).Replace("-", "")
+                        );
+                        Packet packet = Decode.GetPacketInformation(extractedPacket);
+                        packetResync.AddPacket(packet);
+                        newDataArrived = true;
+                    }
+                    if (!newDataArrived)
+                    {
+                        _logger.LogWarning("No valid packets extracted from buffer.");
+                    }
+                    if (newDataArrived)
+                    {
+                        List<Packet>? list;
+                        _logger.LogInformation("Getting next group of packets...");
+                        list = packetResync.GetNextGroup();
+
+                        if (list == null)
                         {
-                            DeviceId.PressureSensor => DataLabel.Pressure,
-                            DeviceId.TemperatureSensor => DataLabel.Temperature,
-                            DeviceId.HumiditySensor => DataLabel.Humidity,
-                            DeviceId.System => DataLabel.System,
-                            DeviceId.Unknown => DataLabel.Unknown,
-                            DeviceId.GPS => DataLabel.GPSData,
-                            _ => throw new NotImplementedException(),
+                            _logger.LogWarning("No packets returned by GetNextGroup.");
+                            return;
+                        }
+
+                        foreach (Packet packet in list)
+                        {
+                            DataLabel label = packet.DeviceId switch
+                            {
+                                DeviceId.PressureSensor => DataLabel.Pressure,
+                                DeviceId.TemperatureSensor => DataLabel.Temperature,
+                                DeviceId.HumiditySensor => DataLabel.Humidity,
+                                DeviceId.System => DataLabel.System,
+                                DeviceId.Unknown => DataLabel.Unknown,
+                                DeviceId.GPS => DataLabel.GPSData,
+                                _ => throw new NotImplementedException(),
+                            };
+
+                            _logger.LogInformation("Processing label: {label}, Data: {data}", label, BitConverter.ToString(packet.Payload.Value));
+
+                            switch (label)
+                            {
+                                case DataLabel.System:
+                                    _currentData[DataLabel.System] = Encoding.ASCII.GetString(packet.Payload.Value);
+                                    break;
+                                case DataLabel.Pressure:
+                                    _currentData[DataLabel.Pressure] = BitConverter
+                                        .ToSingle(packet.Payload.Value, 0)
+                                        .ToString(CultureInfo.InvariantCulture);
+                                    break;
+                                case DataLabel.Temperature:
+                                    _currentData[DataLabel.Temperature] = BitConverter
+                                        .ToSingle(packet.Payload.Value, 0)
+                                        .ToString(CultureInfo.InvariantCulture);
+                                    break;
+                                case DataLabel.Humidity:
+                                    _currentData[DataLabel.Humidity] = BitConverter
+                                        .ToSingle(packet.Payload.Value, 0)
+                                        .ToString(CultureInfo.InvariantCulture);
+                                    break;
+                                case DataLabel.GPSData:
+                                    _currentData[DataLabel.Latitude] = BitConverter
+                                        .ToDouble(packet.Payload.Value, 0)
+                                        .ToString(CultureInfo.InvariantCulture);
+                                    _currentData[DataLabel.Longitude] = BitConverter
+                                        .ToDouble(packet.Payload.Value, 8)
+                                        .ToString(CultureInfo.InvariantCulture);
+                                    _currentData[DataLabel.Altitude] = BitConverter
+                                        .ToSingle(packet.Payload.Value, 16)
+                                        .ToString(CultureInfo.InvariantCulture);
+                                    break;
+                            }
+                        }
+
+                        Dictionary<DataLabel, string> dict = new(_currentData);
+                        ulong timestamp = list[0].Timestamp;
+
+                        GPSCoords coords = new()
+                        {
+                            Latitude = _currentData.TryGetValue(DataLabel.Latitude, out string? latStr) ? float.Parse(latStr, CultureInfo.InvariantCulture) : float.NaN,
+                            Longitude = _currentData.TryGetValue(DataLabel.Longitude, out string? lonStr) ? float.Parse(lonStr, CultureInfo.InvariantCulture) : float.NaN,
+                            Altitude = _currentData.TryGetValue(DataLabel.Altitude, out string? altStr) ? float.Parse(altStr, CultureInfo.InvariantCulture) : float.NaN,
                         };
-                        switch (label)
-                        {
-                            case DataLabel.System:
-                                _currentData[DataLabel.System] = Encoding.ASCII.GetString(
-                                    packet.Payload.Value
-                                );
-                                break;
-                            case DataLabel.Pressure:
-                                _currentData[DataLabel.Pressure] = BitConverter
-                                    .ToSingle(packet.Payload.Value, 0)
-                                    .ToString(CultureInfo.InvariantCulture);
-                                break;
-                            case DataLabel.Temperature:
-                                _currentData[DataLabel.Temperature] = BitConverter
-                                    .ToSingle(packet.Payload.Value, 0)
-                                    .ToString(CultureInfo.InvariantCulture);
-                                break;
-                            case DataLabel.Humidity:
-                                _currentData[DataLabel.Humidity] = BitConverter
-                                    .ToSingle(packet.Payload.Value, 0)
-                                    .ToString(CultureInfo.InvariantCulture);
-                                break;
-                            case DataLabel.GPSData:
-                                _currentData[DataLabel.Latitude] = BitConverter
-                                    .ToDouble(packet.Payload.Value, 0)
-                                    .ToString(CultureInfo.InvariantCulture);
-                                _currentData[DataLabel.Longitude] = BitConverter
-                                    .ToDouble(packet.Payload.Value, 8)
-                                    .ToString(CultureInfo.InvariantCulture);
-                                _currentData[DataLabel.Altitude] = BitConverter
-                                    .ToSingle(packet.Payload.Value, 16)
-                                    .ToString(CultureInfo.InvariantCulture);
-                                break;
-                        }
-                        if (label == DataLabel.GPSData)
-                        {
-                            _logger.LogInformation(
-                                "GPS Data -> Latitude: {lat}, Longitude: {lon}, Altitude: {alt}, Timestamp: {timestamp}",
-                                _currentData[DataLabel.Latitude],
-                                _currentData[DataLabel.Longitude],
-                                _currentData[DataLabel.Altitude],
-                                packet.Timestamp.ToString(CultureInfo.InvariantCulture)
-                            );
-                        }
-                        else
-                        {
-                            _logger.LogInformation(
-                                "Label: {label} Value: {value} Timestamp: {timestamp}",
-                                label.ToString(),
-                                _currentData[label],
-                                packet.Timestamp.ToString(CultureInfo.InvariantCulture)
-                            );
-                        }
+
+                        _logger.LogInformation("Data sent to server: {data}", string.Join(", ", dict));
+
+                        OnDataProvided?.Invoke(
+                            new EventData<Dictionary<DataLabel, string>>
+                            {
+                                DataStamp = new DataStamp { Timestamp = timestamp, Coordinates = coords },
+                                Data = dict,
+                            }
+                        );
+                        _currentData.Clear();
                     }
                 }
-
-                Dictionary<DataLabel, string> dict;
-                dict = new(_currentData);
-
-                ulong timestamp = list[0].Timestamp;
-
-                GPSCoords coords;
-
-                if (
-                    _currentData.TryGetValue(DataLabel.Latitude, out string? latStr)
-                    && _currentData.TryGetValue(DataLabel.Longitude, out string? lonStr)
-                    && _currentData.TryGetValue(DataLabel.Altitude, out string? altStr)
-                )
+                finally
                 {
-                    coords = new GPSCoords
-                    {
-                        Latitude = float.Parse(latStr, CultureInfo.InvariantCulture),
-                        Longitude = float.Parse(lonStr, CultureInfo.InvariantCulture),
-                        Altitude = float.Parse(altStr, CultureInfo.InvariantCulture),
-                    };
+                    _isProcessing = false;
+                    _timer.Start();
                 }
-                else
-                {
-                    coords = new GPSCoords
-                    {
-                        Latitude = float.NaN,
-                        Longitude = float.NaN,
-                        Altitude = float.NaN,
-                    };
-                }
-
-                _currentData.Clear();
-
-                OnDataProvided?.Invoke(
-                    new EventData<Dictionary<DataLabel, string>>
-                    {
-                        DataStamp = new DataStamp { Timestamp = timestamp, Coordinates = coords },
-                        Data = dict,
-                    }
-                );
             }
         }
+
 
         public void Dispose()
         {
