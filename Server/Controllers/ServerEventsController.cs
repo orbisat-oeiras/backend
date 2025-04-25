@@ -64,11 +64,11 @@ namespace backend.Server.Controllers
                     {
                         // Leaving these here just in case...
                         //_logger.LogInformation("Sending event provided by {evtFinalizerType}.", eventFinalizer.GetType().Name);
-                        _logger.LogInformation(
-                            "Tag: {tag}\nContent: {content}",
-                            payload.Data.tag,
-                            payload.Data.content
-                        );
+                        // _logger.LogInformation(
+                        //     "Tag: {tag}\nContent: {content}",
+                        //     payload.Data.tag,
+                        //     payload.Data.content
+                        // );
 
                         // Send the tagged event in a properly formatted way
                         await Response.WriteAsync($"event: {payload.Data.tag}\n");
