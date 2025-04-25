@@ -17,7 +17,7 @@ namespace backend.Library.Services.EventFinalizers
             return new EventData<(string, object)>
             {
                 DataStamp = data.DataStamp,
-                Data = ("humidity", data.Data),
+                Data = ("accelerationz", data.Data),
             };
         }
     }
