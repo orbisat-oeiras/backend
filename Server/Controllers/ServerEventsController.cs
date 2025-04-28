@@ -82,9 +82,9 @@ namespace backend.Server.Controllers
                     }
                     catch (ObjectDisposedException)
                     {
-                        _logger.LogWarning(
-                            "Error in SSE connection. The client may have disconnected."
-                        );
+                        // _logger.LogWarning(
+                        //     "Error in SSE connection. The client may have disconnected."
+                        // );
                     }
                 };
             }
