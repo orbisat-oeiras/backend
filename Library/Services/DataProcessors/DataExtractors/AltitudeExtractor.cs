@@ -26,8 +26,8 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
         protected override float Convert(IEnumerable<byte[]> data)
         {
             float pressure = BitConverter.ToSingle(data.First(), 0);
-            // Add 273.15 to convert from Celsius to kelvin
-            float temperature = BitConverter.ToSingle(data.First(), 0) + 273.15f;
+            // The temperature is stored in the second byte array, so we need to skip the first one.
+            float temperature = BitConverter.ToSingle(data.ElementAt(1), 0) + 273.15f;
 
             // Calculate the altitude from pressure and temperature. Based on the first formula from
             // https://physics.stackexchange.com/questions/333475/how-to-calculate-altitude-from-current-temperature-and-pressure
