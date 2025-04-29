@@ -6,6 +6,7 @@ using backend.Library.Services.DataProcessors;
 using backend.Library.Services.DataProcessors.DataExtractors;
 using backend.Library.Services.DataProviders;
 using backend.Library.Services.EventFinalizers;
+using backend.Server.Controllers;
 using Microsoft.Extensions.Logging.Console;
 using NReco.Logging.File;
 using Spectre.Console;
@@ -126,6 +127,7 @@ namespace backend
                 )
                 .AddFinalizer<VelocityFinalizer>();
 
+            builder.Services.AddHostedService<CsvController>();
             // This will register all classes annotated with ApiController
             builder.Services.AddControllers();
             // Set up Swagger/OpenAPI (learn more at https://aka.ms/aspnetcore/swashbuckle)
