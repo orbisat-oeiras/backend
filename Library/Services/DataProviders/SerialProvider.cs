@@ -82,14 +82,14 @@ namespace backend.Library.Services.DataProviders
             _serialPort = new SerialPort(portName, baudRate, parity)
             {
                 // I have no clue what a reasonable value for this is
-                ReadTimeout = 500,
-                WriteTimeout = 500,
+                ReadTimeout = 400,
+                WriteTimeout = 400,
             };
             // Open the port
             _serialPort.Open();
 
             // Set up event listeners
-            _timer = new System.Timers.Timer(500) { AutoReset = true };
+            _timer = new System.Timers.Timer(250) { AutoReset = true };
             _timer.Elapsed += ReceiveAndSendData;
             _timer.Start();
         }
