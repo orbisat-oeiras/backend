@@ -12,7 +12,7 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
     {
         public PressureExtractor(
             [FromKeyedServices(ServiceKeys.DataProvider)]
-                IDataProvider<Dictionary<SerialProvider.DataLabel, string>> provider
+                IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>> provider
         )
             : base(provider)
         {
@@ -20,7 +20,7 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
             _sourceIndexes = [SerialProvider.DataLabel.Pressure];
         }
 
-        protected override float Convert(IEnumerable<string> data) =>
-            float.Parse(data.First(), CultureInfo.InvariantCulture);
+        protected override float Convert(IEnumerable<byte[]> data) =>
+            BitConverter.ToSingle(data.First(), 0);
     }
 }

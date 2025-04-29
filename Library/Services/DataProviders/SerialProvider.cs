@@ -16,7 +16,7 @@ namespace backend.Library.Services.DataProviders
     /// Provides data read from a serial port.
     /// </summary>
     public sealed class SerialProvider
-        : IDataProvider<Dictionary<SerialProvider.DataLabel, string>>,
+        : IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>,
             IDisposable
     {
         /// <summary>
@@ -43,7 +43,7 @@ namespace backend.Library.Services.DataProviders
             Unknown,
         }
 
-        public event Action<EventData<Dictionary<DataLabel, string>>>? OnDataProvided;
+        public event Action<EventData<Dictionary<DataLabel, byte[]>>>? OnDataProvided;
 
         // Logger provided by DI, used for printing information to all logging providers at once
         private readonly ILogger<SerialProvider> _logger;
@@ -53,7 +53,7 @@ namespace backend.Library.Services.DataProviders
         private readonly object _lock = new();
         private bool _isProcessing;
         private readonly PacketBuffer _packetBuffer = new();
-        private readonly Dictionary<DataLabel, string> _currentData;
+        private readonly Dictionary<DataLabel, byte[]> _currentData;
 
         private readonly System.Timers.Timer _timer;
 
@@ -166,92 +166,56 @@ namespace backend.Library.Services.DataProviders
                                 DeviceId.Accelerometer => DataLabel.AccelerationData,
                                 _ => throw new NotImplementedException(),
                             };
+                            _currentData[label] = packet.Payload.Value;
 
-                            _logger.LogInformation(
-                                "Processing label: {label}, Data: {data}",
-                                label,
-                                BitConverter.ToString(packet.Payload.Value)
-                            );
-
-                            switch (label)
+                            // These logs can easily be removed, I'm just scared
+                            // because they are bringing back the conversions I just removed.
+                            if (label == DataLabel.System)
                             {
-                                case DataLabel.System:
-                                    _currentData[DataLabel.System] = Encoding.ASCII.GetString(
-                                        packet.Payload.Value
-                                    );
-                                    break;
-                                case DataLabel.Pressure:
-                                    _currentData[DataLabel.Pressure] = BitConverter
+                                _logger.LogInformation(
+                                    "System data: {data}",
+                                    Encoding.ASCII.GetString(packet.Payload.Value)
+                                );
+                            }
+                            else
+                            {
+                                _logger.LogInformation(
+                                    "{label} data: {data}",
+                                    label,
+                                    BitConverter
                                         .ToSingle(packet.Payload.Value, 0)
-                                        .ToString(CultureInfo.InvariantCulture);
-                                    break;
-                                case DataLabel.Temperature:
-                                    _currentData[DataLabel.Temperature] = BitConverter
-                                        .ToSingle(packet.Payload.Value, 0)
-                                        .ToString(CultureInfo.InvariantCulture);
-                                    break;
-                                case DataLabel.Humidity:
-                                    _currentData[DataLabel.Humidity] = BitConverter
-                                        .ToSingle(packet.Payload.Value, 0)
-                                        .ToString(CultureInfo.InvariantCulture);
-                                    break;
-                                case DataLabel.GPSData:
-                                    _currentData[DataLabel.Latitude] = BitConverter
-                                        .ToDouble(packet.Payload.Value, 0)
-                                        .ToString(CultureInfo.InvariantCulture);
-                                    _currentData[DataLabel.Longitude] = BitConverter
-                                        .ToDouble(packet.Payload.Value, 8)
-                                        .ToString(CultureInfo.InvariantCulture);
-                                    _currentData[DataLabel.Altitude] = BitConverter
-                                        .ToSingle(packet.Payload.Value, 16)
-                                        .ToString(CultureInfo.InvariantCulture);
-                                    break;
-                                case DataLabel.AccelerationData:
-                                    _currentData[DataLabel.AccelerationX] = BitConverter
-                                        .ToSingle(packet.Payload.Value, 0)
-                                        .ToString(CultureInfo.InvariantCulture);
-                                    _currentData[DataLabel.AccelerationY] = BitConverter
-                                        .ToSingle(packet.Payload.Value, 4)
-                                        .ToString(CultureInfo.InvariantCulture);
-                                    _currentData[DataLabel.AccelerationZ] = BitConverter
-                                        .ToSingle(packet.Payload.Value, 8)
-                                        .ToString(CultureInfo.InvariantCulture);
-                                    break;
+                                        .ToString(CultureInfo.InvariantCulture)
+                                );
                             }
                         }
 
-                        Dictionary<DataLabel, string> dict = new(_currentData);
+                        Dictionary<DataLabel, byte[]> dict = new(_currentData);
                         ulong timestamp = list[0].Timestamp;
 
                         GPSCoords coords = new()
                         {
                             Latitude = _currentData.TryGetValue(
-                                DataLabel.Latitude,
-                                out string? latStr
+                                DataLabel.GPSData,
+                                out byte[]? latBytes
                             )
-                                ? float.Parse(latStr, CultureInfo.InvariantCulture)
-                                : float.NaN,
+                                ? BitConverter.ToDouble(latBytes, 0)
+                                : double.NaN,
                             Longitude = _currentData.TryGetValue(
-                                DataLabel.Longitude,
-                                out string? lonStr
+                                DataLabel.GPSData,
+                                out byte[]? lonBytes
                             )
-                                ? float.Parse(lonStr, CultureInfo.InvariantCulture)
-                                : float.NaN,
+                                ? BitConverter.ToDouble(lonBytes, 8)
+                                : double.NaN,
                             Altitude = _currentData.TryGetValue(
                                 DataLabel.Altitude,
-                                out string? altStr
+                                out byte[]? altBytes
                             )
-                                ? float.Parse(altStr, CultureInfo.InvariantCulture)
+                                ? BitConverter.ToSingle(altBytes, 16)
                                 : float.NaN,
                         };
 
-                        _logger.LogInformation(
-                            "Data sent to server: {data}",
-                            string.Join(", ", dict)
-                        );
-
                         OnDataProvided?.Invoke(
-                            new EventData<Dictionary<DataLabel, string>>
+                            new EventData<Dictionary<DataLabel, byte[]>>
                             {
                                 DataStamp = new DataStamp
                                 {

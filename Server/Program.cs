@@ -56,7 +56,7 @@ namespace backend
             else
             {
                 builder.Services.AddKeyedSingleton<
-                    IDataProvider<Dictionary<SerialProvider.DataLabel, string>>,
+                    IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>,
                     SerialProvider
                 >(
                     ServiceKeys.DataProvider,
