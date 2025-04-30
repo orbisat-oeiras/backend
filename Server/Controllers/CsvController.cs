@@ -1,6 +1,3 @@
-using System.IO; // Needed for StreamWriter, Directory
-using System.Threading; // Needed for Timeout
-using System.Threading.Tasks;
 using backend.Library.Models;
 using backend.Library.Services.EventFinalizers;
 
@@ -66,13 +63,10 @@ namespace backend.Server.Controllers
             finally
             {
                 _logger.LogInformation("CsvController cleaning up subscriptions.");
-                // Unsubscribe from events
-                // This needs to happen *after* the service loop has ended
                 foreach (IFinalizedProvider eventFinalizer in _eventFinalizers)
                 {
                     eventFinalizer.OnDataProvided -= HandleData; // Direct unsubscription
                 }
-                // No need to manually dispose _sw here because of the 'using' block
             }
         }
 
@@ -87,7 +81,7 @@ namespace backend.Server.Controllers
             try
             {
                 string incomingTimestamp = payload.DataStamp.Timestamp.ToString();
-                bool wroteLine = false;
+                bool lineWritten = false;
 
                 lock (_lock)
                 {
@@ -98,7 +92,7 @@ namespace backend.Server.Controllers
                     {
                         _sw.WriteLine(string.Join(",", _data));
                         _sw.Flush();
-                        wroteLine = true;
+                        lineWritten = true;
 
                         for (int i = 0; i < _data.Length; i++)
                             _data[i] = string.Empty;
@@ -146,9 +140,9 @@ namespace backend.Server.Controllers
                             break;
                     }
                     _data[8] = payload.DataStamp.Timestamp.ToString();
-                } // End lock
+                }
 
-                if (wroteLine)
+                if (lineWritten)
                 {
                     _logger.LogInformation("Wrote data row for timestamp {ts}", _currentTimestamp);
                 }
