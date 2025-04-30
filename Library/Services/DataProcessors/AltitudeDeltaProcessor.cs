@@ -14,6 +14,7 @@ namespace backend.Library.Services.DataProcessors
 
         protected override EventData<float> Process(EventData<float> data)
         {
+            // TODO: Check if we use GPS altitude or barometric altitude
             return data with { Data = data.Data - data.DataStamp.Coordinates.Altitude };
         }
     }
