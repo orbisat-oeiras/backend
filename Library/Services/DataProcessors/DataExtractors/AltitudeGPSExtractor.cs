@@ -9,19 +9,24 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
     {
         public AltitudeGPSExtractor(
             [FromKeyedServices(ServiceKeys.DataProvider)]
-                IDataProvider<Dictionary<SerialProvider.DataLabel, string>> provider
+                IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>> provider
         )
             : base(provider)
         {
             _sourceIndexes = [SerialProvider.DataLabel.Altitude];
         }
 
-        protected override float Convert(IEnumerable<string> data)
+        protected override float Convert(IEnumerable<byte[]> data)
         {
-            float altitude = 0;
-            if (data.First() != "nan")
-                altitude = float.Parse(data.First(), CultureInfo.InvariantCulture);
-            return altitude;
+            if (data.Any())
+            {
+                // Convert the first byte array to a float and return it
+                return BitConverter.ToSingle(data.First(), 16);
+            }
+            else
+            {
+                return float.NaN;
+            }
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using backend.Library.Services;
 using backend.Library.Services.DataProviders;
 using Microsoft.Extensions.DependencyInjection;
@@ -6,18 +6,18 @@ using Microsoft.Extensions.DependencyInjection;
 namespace backend.Library.Services.DataProcessors.DataExtractors
 {
     /// <summary>
-    /// Extracts temperature data from SerialProvider data.
+    /// Extracts humidity data from SerialProvider data.
     /// </summary>
-    public class TemperatureExtractor : DataExtractorBase<float>
+    public class HumidityExtractor : DataExtractorBase<float>
     {
-        public TemperatureExtractor(
+        public HumidityExtractor(
             [FromKeyedServices(ServiceKeys.DataProvider)]
                 IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>> provider
         )
             : base(provider)
         {
-            // Extract temperature data
-            _sourceIndexes = [SerialProvider.DataLabel.Temperature];
+            // Extract humidity data
+            _sourceIndexes = [SerialProvider.DataLabel.Humidity];
         }
 
         protected override float Convert(IEnumerable<byte[]> data) =>

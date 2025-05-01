@@ -1,9 +1,14 @@
 ﻿using System;
 using System.Globalization;
 using System.IO.Ports;
+using System.Text;
 using System.Text.RegularExpressions;
 using backend.Library.Models;
+using backend.Library.Services.DataProcessors;
+using backend.Library.Services.DataProcessors.DataExtractors;
+using Microsoft.AspNetCore.Builder.Extensions;
 using Microsoft.Extensions.Logging;
+using Orbipacket;
 
 namespace backend.Library.Services.DataProviders
 {
@@ -11,7 +16,7 @@ namespace backend.Library.Services.DataProviders
     /// Provides data read from a serial port.
     /// </summary>
     public sealed class SerialProvider
-        : IDataProvider<Dictionary<SerialProvider.DataLabel, string>>,
+        : IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>,
             IDisposable
     {
         /// <summary>
@@ -22,25 +27,33 @@ namespace backend.Library.Services.DataProviders
         /// </remarks>
         public enum DataLabel
         {
+            System,
             Timestamp,
             Pressure,
             Temperature,
+            Humidity,
             AccelerationX,
             AccelerationY,
             AccelerationZ,
             Latitude,
             Longitude,
             Altitude,
+            GPSData,
+            AccelerationData,
+            Unknown,
         }
 
-        public event Action<EventData<Dictionary<DataLabel, string>>>? OnDataProvided;
+        public event Action<EventData<Dictionary<DataLabel, byte[]>>>? OnDataProvided;
 
         // Logger provided by DI, used for printing information to all logging providers at once
         private readonly ILogger<SerialProvider> _logger;
         private readonly SerialPort _serialPort;
         private readonly Dictionary<DataLabel, int> _schema = [];
-
-        private string _buffer = "";
+        private readonly PacketResync packetResync = new();
+        private readonly object _lock = new();
+        private bool _isProcessing;
+        private readonly PacketBuffer _packetBuffer = new();
+        private readonly Dictionary<DataLabel, byte[]> _currentData;
 
         private readonly System.Timers.Timer _timer;
 
@@ -59,6 +72,7 @@ namespace backend.Library.Services.DataProviders
         )
         {
             _logger = logger;
+            _currentData = [];
             // Note that more options are available for configuring a SerialPort,
             // namely data bits, stop bits and handshake. I have no idea what those
             // are, and am very likely to ever change them in the radio modules
@@ -68,14 +82,15 @@ namespace backend.Library.Services.DataProviders
             _serialPort = new SerialPort(portName, baudRate, parity)
             {
                 // I have no clue what a reasonable value for this is
-                ReadTimeout = 500,
-                WriteTimeout = 500,
+                ReadTimeout = 400,
+                WriteTimeout = 400,
             };
             // Open the port
             _serialPort.Open();
+
             // Set up event listeners
-            _timer = new System.Timers.Timer(500) { AutoReset = true };
-            _timer.Elapsed += HandleDataReceived;
+            _timer = new System.Timers.Timer(200) { AutoReset = true };
+            _timer.Elapsed += ReceiveAndSendData;
             _timer.Start();
         }
 
@@ -84,118 +99,140 @@ namespace backend.Library.Services.DataProviders
         /// </summary>
         /// <param name="sender">The SerialPort object which raised the event</param>
         /// <param name="e"></param>
-        private void HandleDataReceived(object? sender, System.Timers.ElapsedEventArgs e)
+        private void ReceiveAndSendData(object? sender, System.Timers.ElapsedEventArgs e)
         {
-            _logger.LogInformation("Receiving...");
-            _buffer += _serialPort.ReadExisting();
-            _buffer = _buffer.TrimStart();
-            while (_buffer.Contains('\n'))
+            lock (_lock)
             {
-                int idx = _buffer.IndexOf('\n');
-                string line = _buffer[..idx];
-                _buffer = _buffer[(idx + 1)..];
-                HandleLineReceived(line);
-            }
-        }
-
-        private void HandleLineReceived(string line)
-        {
-            _logger.LogInformation("LINE: {line}", line);
-            ;
-            // Check for schema message
-            if (line.StartsWith("schema", StringComparison.CurrentCultureIgnoreCase))
-            {
-                ParseSchema(line.ToLower().Replace("schema", ""));
-                return;
-            }
-
-            if (line.Trim() != "")
-                // Process and emit data
-                OnDataProvided?.Invoke(WrapInEventData(line));
-        }
-
-        /// <summary>
-        /// Parses a schema message from the serial port, registering its info in <see cref="_schema"/>
-        /// </summary>
-        /// <param name="schema">Schema message from the serial port</param>
-        /// <exception cref="InvalidDataException">Thrown if <paramref name="schema"/> doesn't fit the expected format</exception>
-        private void ParseSchema(string schema)
-        {
-            _logger.LogInformation("Schema: {data}", schema);
-            string[] data = schema.Split(':').Select(x => x.Trim().Trim('[', ']', ';')).ToArray();
-            for (int i = 0; i < data.Length; i++)
-            {
-                DataLabel key = data[i] switch
+                _timer.Start();
+                try
                 {
-                    "timestamp" => DataLabel.Timestamp,
-                    "pressure" => DataLabel.Pressure,
-                    "temperature" => DataLabel.Temperature,
-                    "acc_x" => DataLabel.AccelerationX,
-                    "acc_y" => DataLabel.AccelerationY,
-                    "acc_z" => DataLabel.AccelerationZ,
-                    "latitude" => DataLabel.Latitude,
-                    "longitude" => DataLabel.Longitude,
-                    "altitude" => DataLabel.Altitude,
-                    string entry => throw new InvalidDataException(
-                        $"Received unknown schema entry {entry} from serial port, consider adding a new item to {nameof(DataLabel)}"
-                    ),
-                };
-                _schema[key] = i;
-            }
-        }
-
-        /// <summary>
-        /// Wrap a message from a serial port in an EventData object
-        /// </summary>
-        /// <param name="message">The message, formatted as "[<data>]:[<data>]:...;"</param>
-        /// <returns>An EventData object containing the message, split into individual pieces</returns>
-        private EventData<Dictionary<DataLabel, string>> WrapInEventData(string message)
-        {
-            try
-            {
-                _logger.LogInformation("Message: {message}", message);
-                // Separate values
-                string[] data = [.. message.Split(':').Select(x => x.Trim().Trim('[', ']', ';'))];
-                // Build dictionary
-                Dictionary<DataLabel, string> dict = _schema
-                    .Select(x => (x.Key, data[x.Value]))
-                    .ToDictionary();
-                float latitude = float.NaN,
-                    longitude = float.NaN,
-                    altitude = float.NaN;
-                if (dict.TryGetValue(DataLabel.Latitude, out string? lat) && lat != "nan")
-                    latitude = float.Parse(lat, CultureInfo.InvariantCulture);
-                if (dict.TryGetValue(DataLabel.Longitude, out string? lon) && lon != "nan")
-                    longitude = float.Parse(lon, CultureInfo.InvariantCulture);
-                if (dict.TryGetValue(DataLabel.Altitude, out string? alt) && alt != "nan")
-                    altitude = float.Parse(alt, CultureInfo.InvariantCulture);
-                // Wrap data
-                return new EventData<Dictionary<DataLabel, string>>
-                {
-                    DataStamp = new DataStamp
+                    if (_isProcessing)
                     {
-                        Timestamp = int.Parse(
-                            dict[DataLabel.Timestamp],
-                            CultureInfo.InvariantCulture
-                        ),
-                        // TODO: get this info from message as well
-                        Coordinates = new GPSCoords
+                        return;
+                    }
+
+                    _isProcessing = true;
+                    _timer.Stop();
+                    _logger.LogInformation("Receiving...");
+
+                    int byteNumber = _serialPort.BytesToRead;
+                    byte[] byteBuffer = new byte[byteNumber];
+                    if (byteNumber != 0)
+                    {
+                        _serialPort.Read(byteBuffer, 0, byteNumber);
+                        _packetBuffer.Add(byteBuffer);
+                    }
+
+                    bool newDataArrived = false;
+                    byte[]? extractedPacket;
+
+                    // Use the same approach I used in testing
+                    while ((extractedPacket = _packetBuffer.ExtractFirstValidPacket()) != null)
+                    {
+                        _logger.LogInformation(
+                            "Extracted packet: {packet}",
+                            BitConverter.ToString([.. extractedPacket.Skip(2)]).Replace("-", "")
+                        );
+                        Packet packet = Decode.GetPacketInformation(extractedPacket);
+                        packetResync.AddPacket(packet);
+                        newDataArrived = true;
+                    }
+                    if (!newDataArrived)
+                    {
+                        _logger.LogWarning("No valid packets extracted from buffer.");
+                    }
+                    if (newDataArrived)
+                    {
+                        List<Packet>? list;
+                        _logger.LogInformation("Getting next group of packets...");
+                        list = packetResync.GetNextGroup();
+
+                        if (list == null)
                         {
-                            Latitude = latitude,
-                            Longitude = longitude,
-                            Altitude = altitude,
-                        },
-                    },
-                    Data = dict,
-                };
-            }
-            catch (KeyNotFoundException)
-            {
-                _logger.LogWarning(
-                    "Incomplete schema: {schema}; waiting for schema message.",
-                    _schema
-                );
-                throw;
+                            _logger.LogWarning("No packets returned by GetNextGroup.");
+                            return;
+                        }
+
+                        foreach (Packet packet in list)
+                        {
+                            DataLabel label = packet.DeviceId switch
+                            {
+                                DeviceId.PressureSensor => DataLabel.Pressure,
+                                DeviceId.TemperatureSensor => DataLabel.Temperature,
+                                DeviceId.HumiditySensor => DataLabel.Humidity,
+                                DeviceId.System => DataLabel.System,
+                                DeviceId.Unknown => DataLabel.Unknown,
+                                DeviceId.GPS => DataLabel.GPSData,
+                                DeviceId.Accelerometer => DataLabel.AccelerationData,
+                                _ => throw new NotImplementedException(),
+                            };
+                            _currentData[label] = packet.Payload.Value;
+
+                            // These logs can easily be removed, I'm just scared
+                            // because they are bringing back the conversions I just removed.
+                            if (label == DataLabel.System)
+                            {
+                                _logger.LogInformation(
+                                    "System data: {data}",
+                                    Encoding.ASCII.GetString(packet.Payload.Value)
+                                );
+                            }
+                            else
+                            {
+                                _logger.LogInformation(
+                                    "{label} data: {data}",
+                                    label,
+                                    BitConverter
+                                        .ToSingle(packet.Payload.Value, 0)
+                                        .ToString(CultureInfo.InvariantCulture)
+                                );
+                            }
+                        }
+
+                        Dictionary<DataLabel, byte[]> dict = new(_currentData);
+                        ulong timestamp = list[0].Timestamp;
+
+                        GPSCoords coords = new()
+                        {
+                            Latitude = _currentData.TryGetValue(
+                                DataLabel.GPSData,
+                                out byte[]? latBytes
+                            )
+                                ? BitConverter.ToDouble(latBytes, 0)
+                                : double.NaN,
+                            Longitude = _currentData.TryGetValue(
+                                DataLabel.GPSData,
+                                out byte[]? lonBytes
+                            )
+                                ? BitConverter.ToDouble(lonBytes, 8)
+                                : double.NaN,
+                            Altitude = _currentData.TryGetValue(
+                                DataLabel.Altitude,
+                                out byte[]? altBytes
+                            )
+                                ? BitConverter.ToSingle(altBytes, 16)
+                                : float.NaN,
+                        };
+
+                        OnDataProvided?.Invoke(
+                            new EventData<Dictionary<DataLabel, byte[]>>
+                            {
+                                DataStamp = new DataStamp
+                                {
+                                    Timestamp = timestamp,
+                                    Coordinates = coords,
+                                },
+                                Data = dict,
+                            }
+                        );
+                        _currentData.Clear();
+                    }
+                }
+                finally
+                {
+                    _isProcessing = false;
+                    _timer.Start();
+                }
             }
         }
 

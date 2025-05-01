@@ -1,17 +1,14 @@
-﻿using backend.Library.Models;
+using backend.Library.Models;
 using backend.Library.Services;
 using backend.Library.Services.DataProviders;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace backend.Library.Services.EventFinalizers
 {
-    /// <summary>
-    /// Finalizes a temperature event, tagged with "primary/temperature".
-    /// </summary>
-    public class TemperatureFinalizer : EventFinalizerBase<float>
+    public class AccelerationXFinalizer : EventFinalizerBase<float>
     {
-        public TemperatureFinalizer(
-            [FromKeyedServices(ServiceKeys.TemperatureExtractor)] IDataProvider<float> provider
+        public AccelerationXFinalizer(
+            [FromKeyedServices(ServiceKeys.AccelerationXExtractor)] IDataProvider<float> provider
         )
             : base(provider) { }
 
@@ -20,7 +17,7 @@ namespace backend.Library.Services.EventFinalizers
             return new EventData<(string, object)>
             {
                 DataStamp = data.DataStamp,
-                Data = ("temperature", data.Data),
+                Data = ("accelerationx", data.Data),
             };
         }
     }

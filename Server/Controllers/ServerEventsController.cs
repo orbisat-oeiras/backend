@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Globalization;
+using System.Text.Json;
 using System.Threading.Tasks;
 using backend.Library.Extensions;
 using backend.Library.Models;
@@ -50,7 +51,6 @@ namespace backend.Server.Controllers
             // Set the response headers; this tells the client we're initiating SSE
             Response.Headers.ContentType = "text/event-stream";
             Response.Headers.CacheControl = "no-cache";
-            Response.Headers.Append("Connection", "keep-alive");
 
             TaskCompletionSource tcs = new();
             CancellationToken cancellationToken = HttpContext.RequestAborted;
@@ -64,11 +64,11 @@ namespace backend.Server.Controllers
                     {
                         // Leaving these here just in case...
                         //_logger.LogInformation("Sending event provided by {evtFinalizerType}.", eventFinalizer.GetType().Name);
-                        _logger.LogDebug(
-                            "Tag: {tag}\nContent: {content}",
-                            payload.Data.tag,
-                            payload.Data.content
-                        );
+                        // _logger.LogInformation(
+                        //     "Tag: {tag}\nContent: {content}",
+                        //     payload.Data.tag,
+                        //     payload.Data.content
+                        // );
 
                         // Send the tagged event in a properly formatted way
                         await Response.WriteAsync($"event: {payload.Data.tag}\n");
@@ -80,11 +80,11 @@ namespace backend.Server.Controllers
                         await Response.WriteAsync("\n\n");
                         await Response.Body.FlushAsync();
                     }
-                    catch (System.ObjectDisposedException)
+                    catch (ObjectDisposedException)
                     {
-                        _logger.LogWarning(
-                            "Error in SSE connection. The client may have disconnected."
-                        );
+                        // _logger.LogWarning(
+                        //     "Error in SSE connection. The client may have disconnected."
+                        // );
                     }
                 };
             }

@@ -478,3 +478,6 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+
+# Csv data files
+Server/Data/

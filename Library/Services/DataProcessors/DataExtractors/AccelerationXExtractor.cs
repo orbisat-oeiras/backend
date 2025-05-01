@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using backend.Library.Services;
 using backend.Library.Services.DataProviders;
 using Microsoft.Extensions.DependencyInjection;
@@ -6,18 +6,18 @@ using Microsoft.Extensions.DependencyInjection;
 namespace backend.Library.Services.DataProcessors.DataExtractors
 {
     /// <summary>
-    /// Extracts temperature data from SerialProvider data.
+    /// Extracts Acceleration X data from SerialProvider data.
     /// </summary>
-    public class TemperatureExtractor : DataExtractorBase<float>
+    public class AccelerationXExtractor : DataExtractorBase<float>
     {
-        public TemperatureExtractor(
+        public AccelerationXExtractor(
             [FromKeyedServices(ServiceKeys.DataProvider)]
                 IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>> provider
         )
             : base(provider)
         {
-            // Extract temperature data
-            _sourceIndexes = [SerialProvider.DataLabel.Temperature];
+            // Extract Acceleration X data
+            _sourceIndexes = [SerialProvider.DataLabel.AccelerationX];
         }
 
         protected override float Convert(IEnumerable<byte[]> data) =>

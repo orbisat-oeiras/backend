@@ -6,6 +6,8 @@ using backend.Library.Services.DataProcessors;
 using backend.Library.Services.DataProcessors.DataExtractors;
 using backend.Library.Services.DataProviders;
 using backend.Library.Services.EventFinalizers;
+using backend.Server.Controllers;
+using Microsoft.Extensions.Logging.Console;
 using NReco.Logging.File;
 using Spectre.Console;
 
@@ -19,7 +21,10 @@ namespace backend
             WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
             // Reset logging to the console
             builder.Logging.ClearProviders();
-            builder.Logging.AddConsole();
+            builder.Logging.AddSimpleConsole(options =>
+            {
+                options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss]";
+            });
             builder.Logging.AddFile($"Logs/log{DateTimeOffset.UtcNow:yyyy-MM-dd-HH-mm-ss}");
 
             Console.CancelKeyPress += (sender, eventArgs) =>
@@ -52,7 +57,7 @@ namespace backend
             else
             {
                 builder.Services.AddKeyedSingleton<
-                    IDataProvider<Dictionary<SerialProvider.DataLabel, string>>,
+                    IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>,
                     SerialProvider
                 >(
                     ServiceKeys.DataProvider,
@@ -69,28 +74,60 @@ namespace backend
                 .Services.AddKeyedSingleton<IDataProvider<float>, PressureExtractor>(
                     ServiceKeys.PressureExtractor
                 )
-                .AddFinalizer<PressureFinalizer>()
-                .AddKeyedSingleton<IDataProvider<float>, TemperatureExtractor>(
+                .AddFinalizer<PressureFinalizer>();
+
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, HumidityExtractor>(
+                    ServiceKeys.HumidityExtractor
+                )
+                .AddFinalizer<HumidityFinalizer>();
+
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, TemperatureExtractor>(
                     ServiceKeys.TemperatureExtractor
                 )
-                .AddFinalizer<TemperatureFinalizer>()
-                .AddKeyedSingleton<IDataProvider<float>, AltitudeExtractor>(
+                .AddFinalizer<TemperatureFinalizer>();
+
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, AltitudeExtractor>(
                     ServiceKeys.AltitudeExtractor
                 )
-                .AddFinalizer<AltitudeFinalizer>()
-                .AddKeyedSingleton<IDataProvider<float>, AltitudeGPSExtractor>(
+                .AddFinalizer<AltitudeFinalizer>();
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, AccelerationZExtractor>(
+                    ServiceKeys.AccelerationZExtractor
+                )
+                .AddFinalizer<AccelerationZFinalizer>();
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, AccelerationXExtractor>(
+                    ServiceKeys.AccelerationXExtractor
+                )
+                .AddFinalizer<AccelerationXFinalizer>();
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, AccelerationYExtractor>(
+                    ServiceKeys.AccelerationYExtractor
+                )
+                .AddFinalizer<AccelerationYFinalizer>();
+
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, AltitudeGPSExtractor>(
                     ServiceKeys.AltitudeGPSExtractor
                 )
-                .AddFinalizer<AltitudeGPSFinalizer>()
-                .AddKeyedSingleton<IDataProvider<float>, AltitudeDeltaProcessor>(
+                .AddFinalizer<AltitudeGPSFinalizer>();
+
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, AltitudeDeltaProcessor>(
                     ServiceKeys.AltitudeDeltaProcessor
                 )
-                .AddFinalizer<AltitudeDeltaFinalizer>()
-                .AddKeyedSingleton<IDataProvider<float>, VelocityProcessor>(
+                .AddFinalizer<AltitudeDeltaFinalizer>();
+
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, VelocityProcessor>(
                     ServiceKeys.VelocityProcessor
                 )
                 .AddFinalizer<VelocityFinalizer>();
 
+            builder.Services.AddHostedService<CsvController>();
             // This will register all classes annotated with ApiController
             builder.Services.AddControllers();
             // Set up Swagger/OpenAPI (learn more at https://aka.ms/aspnetcore/swashbuckle)
