@@ -89,7 +89,7 @@ namespace backend.Library.Services.DataProviders
             _serialPort.Open();
 
             // Set up event listeners
-            _timer = new System.Timers.Timer(250) { AutoReset = true };
+            _timer = new System.Timers.Timer(200) { AutoReset = true };
             _timer.Elapsed += ReceiveAndSendData;
             _timer.Start();
         }
