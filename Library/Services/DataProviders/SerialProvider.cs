@@ -168,8 +168,8 @@ namespace backend.Library.Services.DataProviders
                             };
                             _currentData[label] = packet.Payload.Value;
 
-                            // These logs can easily be removed, I'm just scared
-                            // because they are bringing back the conversions I just removed.
+                            // These logs can easily be removed, but
+                            // they are converting from byte[] to string at every packet received.
                             if (label == DataLabel.System)
                             {
                                 _logger.LogInformation(
