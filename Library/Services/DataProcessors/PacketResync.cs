@@ -12,18 +12,28 @@ namespace backend.Library.Services.DataProcessors
         private const ulong WINDOW_NANOSECONDS = 100_000_000; // 100ms window
         private readonly List<Packet> _resyncBuffer = [];
 
+        private ulong? currentTimestamp = null;
+
         public void AddPacket(Packet packet)
         {
-            ulong currentTimestamp = (ulong)(
-                DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1_000_000
-            );
             const ulong STALE_THRESHOLD_NANOSECONDS = 1_500_000_000; // 1.5 seconds
-            if (currentTimestamp - packet.Timestamp > STALE_THRESHOLD_NANOSECONDS)
+
+            if (
+                currentTimestamp != null
+                && packet.Timestamp - currentTimestamp > STALE_THRESHOLD_NANOSECONDS
+            )
             {
+                // Console.WriteLine(
+                //     "Difference between packet times:" + (packet.Timestamp - currentTimestamp)
+                // );
+                // Console.WriteLine("Current Timestamp:" + currentTimestamp);
+                // Console.WriteLine("Packet Timestamp:" + packet.Timestamp);
+                currentTimestamp = packet.Timestamp;
                 return;
             }
-
             _resyncBuffer.Add(packet);
+
+            currentTimestamp = packet.Timestamp;
         }
 
         public List<Packet> GetNextGroup()
