@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using backend.Library.Extensions;
 using backend.Library.Services;
 using backend.Library.Services.DataProcessors;
+using backend.Library.Services.DataProcessors.Analyzers;
 using backend.Library.Services.DataProcessors.DataExtractors;
 using backend.Library.Services.DataProviders;
 using backend.Library.Services.EventFinalizers;
@@ -33,6 +34,79 @@ namespace backend
                 Environment.Exit(0);
             };
 
+            if (args.Length > 1 && args[0] == "--read-file")
+            {
+                builder.Services.AddKeyedSingleton<
+                    IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>,
+                    FileAnalyser
+                >(ServiceKeys.DataProvider);
+                // Register all the internal services, no idea if this is the best practice but uhh
+                // it works
+
+                // TODO: See if I can just use the same services as the serial provider
+
+                // This shouldn't really be a problem, because the person who is analysing a file
+                // isn't really expected to be using the serial data.
+
+                builder
+                    .Services.AddKeyedSingleton<IDataProvider<float>, PressureExtractor>(
+                        ServiceKeys.PressureExtractor
+                    )
+                    .AddFinalizer<PressureFinalizer>();
+
+                builder
+                    .Services.AddKeyedSingleton<IDataProvider<float>, HumidityExtractor>(
+                        ServiceKeys.HumidityExtractor
+                    )
+                    .AddFinalizer<HumidityFinalizer>();
+
+                builder
+                    .Services.AddKeyedSingleton<IDataProvider<float>, TemperatureExtractor>(
+                        ServiceKeys.TemperatureExtractor
+                    )
+                    .AddFinalizer<TemperatureFinalizer>();
+
+                builder
+                    .Services.AddKeyedSingleton<IDataProvider<float>, AltitudeExtractor>(
+                        ServiceKeys.AltitudeExtractor
+                    )
+                    .AddFinalizer<AltitudeFinalizer>();
+
+                builder
+                    .Services.AddKeyedSingleton<IDataProvider<float>, VelocityProcessor>(
+                        ServiceKeys.VelocityProcessor
+                    )
+                    .AddFinalizer<VelocityFinalizer>();
+
+                builder.Services.AddHostedService<CsvController>();
+
+                WebApplication fileApp = builder.Build();
+
+                fileApp.Start();
+
+                if (
+                    fileApp.Services.GetKeyedService<
+                        IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>
+                    >(ServiceKeys.DataProvider)
+                    is not FileAnalyser fileAnalyser
+                )
+                {
+                    Console.WriteLine("Failed to resolve FileAnalyser.");
+                    return;
+                }
+
+                string filepath = args[1];
+
+                if (!File.Exists(filepath))
+                {
+                    Console.WriteLine($"File {filepath} does not exist.");
+                    return;
+                }
+
+                fileAnalyser.AnalyseFileContents(filepath);
+
+                Console.WriteLine($"File {filepath} processed successfully.");
+            }
             // Get the name of the serial port where data is arriving
             string serialPortName = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()

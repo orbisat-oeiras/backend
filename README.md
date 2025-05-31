@@ -13,14 +13,9 @@
   - `DataProcessors`: classes responsible for transforming data. Notably, every processor both subscribes to a provider to get new data to transform, and is itself a provider, emitting a new event after it has transformed the data.
     - `DataExtractors`: classes responsible for extracting a specific piece of data from `SerialProvider` data.
   - `EventFinalizers`: classes responsible for finalizing an event, i.e., collecting the necessary data and tagging it properly. Finalizers must be `IDataProviders` (though they'll usually be processors) marked with `EventFinalizerAttribute`. Each finalizer is responsible for only one tagged events. The following tags are (or will be) provided, along with their respective finalizers.
-    - `primary/pressure` by `PressureFinalizer`
-    - `primary/temperature` by `TemperatureFinalizer`
-    - `primary/altitude` by `AltitudeFinalizer`
-    - `secondary/raw`
-    - `secondary/ndvi`
-    - `general/acceleration`
-    - `general/position`
-    - `general/raw`
+    - `pressure` by `PressureFinalizer`
+    - `temperature` by `TemperatureFinalizer`
+    - `altitude` by `AltitudeFinalizer`
 
 ## Data flow
 
@@ -32,3 +27,7 @@
 ## Notes and useful things
 
 Most browsers have a limit of 6 connections per domain. Since each SSE endpoint represents a connection that stays open indeterminately, we have to be very careful when subscribing to SSEs. However, response bodies consist of `data` tags and `event` tags, so we can have a single endpoint which sends all the data. Thus the endpoints specified above become internal separations which all write to the same endpoint.
+
+### CanSat binary data file analysis
+
+By using the `--read-data` argument followed by the `filePath` of the raw binary data from the CanSat log files, you will be able to quickly analyse offline data, without the use of any external scripts.
