@@ -35,12 +35,11 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
             EventData<Dictionary<SerialProvider.DataLabel, byte[]>> data
         )
         {
-            return new EventData<T>()
-            {
-                DataStamp = data.DataStamp,
-                // Select a subset of the data pieces
-                Data = Convert(_sourceIndexes.Select(x => data.Data[x])),
-            };
+            IEnumerable<byte[]> selectedData = _sourceIndexes.Select(x =>
+                data.Data.TryGetValue(x, out byte[]? value) ? value : BitConverter.GetBytes(0.0f)
+            );
+
+            return new EventData<T> { DataStamp = data.DataStamp, Data = Convert(selectedData) };
         }
     }
 }
