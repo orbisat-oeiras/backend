@@ -16,7 +16,7 @@ namespace backend.Library.Services.DataProcessors
 
         public void AddPacket(Packet packet)
         {
-            const ulong STALE_THRESHOLD_NANOSECONDS = 1_500_000_000; // 1.5 seconds
+            const ulong STALE_THRESHOLD_NANOSECONDS = 0_500_000_000; // 0.5 seconds
 
             if (
                 currentTimestamp != null
