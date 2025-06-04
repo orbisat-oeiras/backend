@@ -124,7 +124,7 @@ namespace backend
             if (serialPortName == "Mock Serial Data")
             {
                 builder.Services.AddKeyedSingleton<
-                    IDataProvider<Dictionary<SerialProvider.DataLabel, string>>,
+                    IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>,
                     MockDataProvider
                 >(ServiceKeys.DataProvider);
             }

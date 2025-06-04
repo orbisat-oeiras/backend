@@ -8,12 +8,12 @@ namespace backend.Library.Services.DataProviders
     /// Provides fake data created on the fly.
     /// </summary>
     public sealed class MockDataProvider
-        : IDataProvider<Dictionary<SerialProvider.DataLabel, string>>,
+        : IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>,
             IDisposable
     {
         private readonly Random _random = new();
         public event Action<
-            EventData<Dictionary<SerialProvider.DataLabel, string>>
+            EventData<Dictionary<SerialProvider.DataLabel, byte[]>>
         >? OnDataProvided;
         private float _altitude = 1000;
         private float _temperature = 20;
@@ -50,23 +50,19 @@ namespace backend.Library.Services.DataProviders
             _latitude = 36;
             _longitude = -25;
 
-            Dictionary<SerialProvider.DataLabel, string> lastData = new Dictionary<
+            Dictionary<SerialProvider.DataLabel, byte[]> lastData = new Dictionary<
                 SerialProvider.DataLabel,
-                string
+                byte[]
             >
             {
-                { SerialProvider.DataLabel.Timestamp, now.ToString() },
-                { SerialProvider.DataLabel.Pressure, _pressure.ToString() },
-                { SerialProvider.DataLabel.Temperature, _temperature.ToString() },
-                { SerialProvider.DataLabel.AccelerationX, _accelerationX.ToString() },
-                { SerialProvider.DataLabel.AccelerationY, _accelerationY.ToString() },
-                { SerialProvider.DataLabel.AccelerationZ, _accelerationZ.ToString() },
-                { SerialProvider.DataLabel.Latitude, _latitude.ToString() },
-                { SerialProvider.DataLabel.Longitude, _longitude.ToString() },
-                { SerialProvider.DataLabel.Altitude, _altitude.ToString() },
+                { SerialProvider.DataLabel.Timestamp, BitConverter.GetBytes(now) },
+                { SerialProvider.DataLabel.Pressure, BitConverter.GetBytes(_pressure) },
+                { SerialProvider.DataLabel.Temperature, BitConverter.GetBytes(_temperature)},
+                { SerialProvider.DataLabel.Latitude, BitConverter.GetBytes(_latitude) },
+                { SerialProvider.DataLabel.Longitude, BitConverter.GetBytes(_longitude) },
             };
             OnDataProvided?.Invoke(
-                new EventData<Dictionary<SerialProvider.DataLabel, string>>
+                new EventData<Dictionary<SerialProvider.DataLabel, byte[]>>
                 {
                     DataStamp = new DataStamp
                     {
