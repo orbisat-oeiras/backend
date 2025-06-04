@@ -18,6 +18,7 @@ namespace backend.Library.Services.DataProviders
         private float _altitude = 1000;
         private float _temperature = 20;
         private float _pressure = 100000;
+        private float _humidity = 50;
         private float _accelerationX,
             _accelerationY,
             _accelerationZ;
@@ -44,6 +45,7 @@ namespace backend.Library.Services.DataProviders
             _pressure += _random.Next(-100, 100);
             _altitude += _random.Next(-10, 10);
             _temperature += _random.Next(-1, 1);
+            _humidity += _random.Next(-1, 1);
             _accelerationX += _random.Next(-1, 1) * 0.1f;
             _accelerationY += _random.Next(-1, 1) * 0.1f;
             _accelerationZ += _random.Next(-1, 1) * 0.1f;
@@ -57,7 +59,8 @@ namespace backend.Library.Services.DataProviders
             {
                 { SerialProvider.DataLabel.Timestamp, BitConverter.GetBytes(now) },
                 { SerialProvider.DataLabel.Pressure, BitConverter.GetBytes(_pressure) },
-                { SerialProvider.DataLabel.Temperature, BitConverter.GetBytes(_temperature)},
+                { SerialProvider.DataLabel.Temperature, BitConverter.GetBytes(_temperature) },
+                { SerialProvider.DataLabel.Humidity, BitConverter.GetBytes(_humidity) },
                 { SerialProvider.DataLabel.Latitude, BitConverter.GetBytes(_latitude) },
                 { SerialProvider.DataLabel.Longitude, BitConverter.GetBytes(_longitude) },
             };
@@ -77,7 +80,7 @@ namespace backend.Library.Services.DataProviders
                     Data = lastData,
                 }
             );
-            _logger.LogInformation("Genereted Mock Data");
+            _logger.LogInformation("Generated Mock Data");
         }
 
         public void Dispose()
