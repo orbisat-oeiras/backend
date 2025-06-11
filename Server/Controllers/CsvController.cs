@@ -1,3 +1,4 @@
+using System.Globalization;
 using backend.Library.Models;
 using backend.Library.Services.EventFinalizers;
 
@@ -117,16 +118,6 @@ namespace backend.Server.Controllers
                             _data[3] =
                                 payload.Data.content?.ToString()?.Replace(",", ".") ?? string.Empty;
                             break;
-                        case "latitude":
-                            _data[4] = payload
-                                .DataStamp.Coordinates.Latitude.ToString()
-                                .Replace(",", ".");
-                            break;
-                        case "longitude":
-                            _data[5] = payload
-                                .DataStamp.Coordinates.Longitude.ToString()
-                                .Replace(",", ".");
-                            break;
                         case "velocity":
                             _data[6] =
                                 payload.Data.content?.ToString()?.Replace(",", ".") ?? string.Empty;
@@ -139,6 +130,18 @@ namespace backend.Server.Controllers
                             _logger.LogWarning("Unknown tag: {tag}", payload.Data.tag.ToString());
                             break;
                     }
+
+                    // Always update GPS coordinates from DataStamp
+                    _data[4] = double.IsNaN(payload.DataStamp.Coordinates.Latitude)
+                        ? "0"
+                        : payload.DataStamp.Coordinates.Latitude.ToString(
+                            CultureInfo.InvariantCulture
+                        );
+                    _data[5] = double.IsNaN(payload.DataStamp.Coordinates.Longitude)
+                        ? "0"
+                        : payload.DataStamp.Coordinates.Longitude.ToString(
+                            CultureInfo.InvariantCulture
+                        );
                     _data[8] = payload.DataStamp.Timestamp.ToString();
                 }
 
