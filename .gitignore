@@ -481,3 +481,5 @@ $RECYCLE.BIN/
 
 # Csv data files
 Server/Data/
+
+.idea/
