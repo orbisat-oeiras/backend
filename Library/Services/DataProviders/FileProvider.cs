@@ -15,7 +15,7 @@ namespace backend.Library.Services.DataProcessors.Analyzers
         >? OnDataProvided;
         private readonly PacketResync _packetResync = new();
         private readonly PacketBuffer _packetBuffer = new();
-        private readonly Dictionary<SerialProvider.DataLabel, byte[]> _currentData = new();
+        private readonly Dictionary<SerialProvider.DataLabel, byte[]> _currentData = [];
 
         /// <summary>
         /// Analyse the contents of a binary file and extract packets.
@@ -76,7 +76,6 @@ namespace backend.Library.Services.DataProcessors.Analyzers
                     _currentData[label] = packet.Payload.Value ?? BitConverter.GetBytes(1.0f);
                 }
 
-                Dictionary<SerialProvider.DataLabel, byte[]> dict = new(_currentData);
                 ulong timestamp = list[0].Timestamp;
 
                 GPSCoords coords = new()
@@ -99,7 +98,7 @@ namespace backend.Library.Services.DataProcessors.Analyzers
                     new EventData<Dictionary<SerialProvider.DataLabel, byte[]>>
                     {
                         DataStamp = new DataStamp { Timestamp = timestamp, Coordinates = coords },
-                        Data = dict,
+                        Data = _currentData,
                     }
                 );
                 _currentData.Clear();
