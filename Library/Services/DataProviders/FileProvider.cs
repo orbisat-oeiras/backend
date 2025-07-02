@@ -13,7 +13,7 @@ namespace backend.Library.Services.DataProcessors.Analyzers
         public event Action<
             EventData<Dictionary<SerialProvider.DataLabel, byte[]>>
         >? OnDataProvided;
-        private readonly PacketResync packetResync = new();
+        private readonly PacketResync _packetResync = new();
         private readonly PacketBuffer _packetBuffer = new();
         private readonly Dictionary<SerialProvider.DataLabel, byte[]> _currentData = new();
 
@@ -45,7 +45,7 @@ namespace backend.Library.Services.DataProcessors.Analyzers
                 }
                 else
                 {
-                    packetResync.AddPacket(packet);
+                    _packetResync.AddPacket(packet);
                 }
                 Console.WriteLine(
                     "Packet DeviceId: {0}, Timestamp: {1}, Payload Length: {2}",
@@ -58,7 +58,7 @@ namespace backend.Library.Services.DataProcessors.Analyzers
             List<Packet>? list;
             Console.WriteLine("Getting next group of packets...");
 
-            while ((list = packetResync.GetNextGroup()).Count > 0)
+            while ((list = _packetResync.GetNextGroup()).Count > 0)
             {
                 foreach (Packet packet in list)
                 {
