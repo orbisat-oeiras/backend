@@ -21,9 +21,9 @@ namespace backend.Library.Models
         [Range(-180, 180)]
         public double Longitude { get; init; }
 
-        /// <summary>
-        /// Meters above average sea level.
-        /// </summary>
-        public float Altitude { get; init; }
+        // /// <summary>
+        // /// Meters above average sea level.
+        // /// </summary>
+        // public float Altitude { get; init; }
     }
 }

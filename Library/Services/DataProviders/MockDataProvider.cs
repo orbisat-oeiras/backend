@@ -74,7 +74,6 @@ namespace backend.Library.Services.DataProviders
                         {
                             Latitude = _latitude,
                             Longitude = _longitude,
-                            Altitude = _altitude,
                         },
                     },
                     Data = lastData,

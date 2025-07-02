@@ -206,13 +206,12 @@ namespace backend.Library.Services.DataProviders
                             )
                                 ? BitConverter.ToDouble(lonBytes, 8)
                                 : double.NaN,
-                            Altitude = _currentData.TryGetValue(
-                                DataLabel.Altitude,
-                                out byte[]? altBytes
-                            )
-                                ? BitConverter.ToSingle(altBytes, 16)
-                                : float.NaN,
                         };
+
+                        _logger.LogInformation(
+                            "GPS Data: {coords}",
+                            coords.Latitude + ", " + coords.Longitude
+                        );
 
                         OnDataProvided?.Invoke(
                             new EventData<Dictionary<DataLabel, byte[]>>

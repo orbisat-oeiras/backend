@@ -179,12 +179,7 @@ namespace backend.Library.Services.DataProviders
                             CultureInfo.InvariantCulture
                         ),
                         // TODO: get this info from message as well
-                        Coordinates = new GPSCoords
-                        {
-                            Latitude = latitude,
-                            Longitude = longitude,
-                            Altitude = altitude,
-                        },
+                        Coordinates = new GPSCoords { Latitude = latitude, Longitude = longitude },
                     },
                     Data = dict,
                 };
