@@ -8,7 +8,7 @@ namespace backend.Library.Services.DataProcessors.Analyzers
     /// Raw binary file analyser for directly accesing log files
     /// and producing csv data files.
     /// </summary>
-    public sealed class FileAnalyser : IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>
+    public sealed class FileProvider : IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>
     {
         public event Action<
             EventData<Dictionary<SerialProvider.DataLabel, byte[]>>
@@ -31,50 +31,35 @@ namespace backend.Library.Services.DataProcessors.Analyzers
 
             byte[] fileBytes = File.ReadAllBytes(filepath);
 
-            // This number is really trial and error, too much and it accumulates too many packets,
-            // too little and it zeroes out packet groups. 175 was the best for me
-            // You can fiddle around with it, I really should study but here I am
-            int byteWindow = 175;
+            _packetBuffer.Add(fileBytes);
+            // Console.WriteLine("Analysing bytes from {0} to {1}", i, i + byteWindow);
+            byte[]? extractedPacket;
 
-            for (int i = 0; i < fileBytes.Length; i += byteWindow)
+            while ((extractedPacket = _packetBuffer.ExtractFirstValidPacket()) != null)
             {
-                if (i + byteWindow > fileBytes.Length)
+                Packet? packet = Decode.GetPacketInformation(extractedPacket);
+                if (packet == null || packet.Payload?.Value == null)
                 {
-                    Console.WriteLine("Reached end of file.");
-                    break;
-                }
-
-                byte[] deliveredBytes = [.. fileBytes.Skip(i).Take(byteWindow)];
-                _packetBuffer.Add(deliveredBytes);
-                // Console.WriteLine("Analysing bytes from {0} to {1}", i, i + byteWindow);
-                byte[]? extractedPacket;
-
-                while ((extractedPacket = _packetBuffer.ExtractFirstValidPacket()) != null)
-                {
-                    Packet? packet = Decode.GetPacketInformation(extractedPacket);
-                    if (packet == null || packet.Payload?.Value == null)
-                    {
-                        Console.WriteLine("Warning: Invalid or corrupted packet.");
-                        continue;
-                    }
-
-                    // Console.WriteLine(
-                    //     "Packet DeviceId: {0}, Timestamp: {1}, Payload Length: {2}",
-                    //     packet.DeviceId,
-                    //     packet.Timestamp,
-                    //     packet.Payload.Value.Length
-                    // );
-                    packetResync.AddPacket(packet);
-                }
-
-                List<Packet>? list;
-                Console.WriteLine("Getting next group of packets...");
-                list = packetResync.GetNextGroup();
-                if (list.Count == 0)
-                {
-                    Console.WriteLine("No packets in the current group.");
+                    Console.WriteLine("Warning: Invalid or corrupted packet.");
                     continue;
                 }
+                else
+                {
+                    packetResync.AddPacket(packet);
+                }
+                Console.WriteLine(
+                    "Packet DeviceId: {0}, Timestamp: {1}, Payload Length: {2}",
+                    packet.DeviceId,
+                    packet.Timestamp,
+                    packet.Payload.Value.Length
+                );
+            }
+
+            List<Packet>? list;
+            Console.WriteLine("Getting next group of packets...");
+
+            while ((list = packetResync.GetNextGroup()).Count > 0)
+            {
                 foreach (Packet packet in list)
                 {
                     SerialProvider.DataLabel label = packet.DeviceId switch

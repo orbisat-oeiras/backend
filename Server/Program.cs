@@ -36,7 +36,7 @@ namespace backend
             {
                 builder.Services.AddKeyedSingleton<
                     IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>,
-                    FileAnalyser
+                    FileProvider
                 >(ServiceKeys.DataProvider);
                 // Register all the internal services, no idea if this is the best practice but uhh
                 // it works
@@ -86,10 +86,10 @@ namespace backend
                     fileApp.Services.GetKeyedService<
                         IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>
                     >(ServiceKeys.DataProvider)
-                    is not FileAnalyser fileAnalyser
+                    is not FileProvider fileProvider
                 )
                 {
-                    Console.WriteLine("Failed to resolve FileAnalyser.");
+                    Console.WriteLine("Failed to resolve FileProvider.");
                     return;
                 }
 
@@ -101,7 +101,7 @@ namespace backend
                     return;
                 }
 
-                fileAnalyser.AnalyseFileContents(filepath);
+                fileProvider.AnalyseFileContents(filepath);
 
                 Console.WriteLine($"File {filepath} processed successfully.");
             }
