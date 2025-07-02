@@ -1,8 +1,4 @@
-// TODO: Resync packets that come in different timestamps
-using System.Security.Cryptography.X509Certificates;
-using System.Text.RegularExpressions;
-using System.Timers;
-using Microsoft.Extensions.Logging;
+﻿// TODO: Resync packets that come in different timestamps
 using Orbipacket;
 
 namespace backend.Library.Services.DataProcessors

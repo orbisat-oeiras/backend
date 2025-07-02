@@ -1,5 +1,4 @@
 ﻿using System.IO.Ports;
-using System.Runtime.CompilerServices;
 using backend.Library.Extensions;
 using backend.Library.Services;
 using backend.Library.Services.DataProcessors;
@@ -8,7 +7,6 @@ using backend.Library.Services.DataProcessors.DataExtractors;
 using backend.Library.Services.DataProviders;
 using backend.Library.Services.EventFinalizers;
 using backend.Server.Controllers;
-using Microsoft.Extensions.Logging.Console;
 using NReco.Logging.File;
 using Spectre.Console;
 

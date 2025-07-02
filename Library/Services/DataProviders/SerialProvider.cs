@@ -1,12 +1,8 @@
-﻿using System;
-using System.Globalization;
+﻿using System.Globalization;
 using System.IO.Ports;
 using System.Text;
-using System.Text.RegularExpressions;
 using backend.Library.Models;
 using backend.Library.Services.DataProcessors;
-using backend.Library.Services.DataProcessors.DataExtractors;
-using Microsoft.AspNetCore.Builder.Extensions;
 using Microsoft.Extensions.Logging;
 using Orbipacket;
 

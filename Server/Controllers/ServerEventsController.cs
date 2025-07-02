@@ -1,8 +1,4 @@
-﻿using System.Globalization;
-using System.Text.Json;
-using System.Threading.Tasks;
-using backend.Library.Extensions;
-using backend.Library.Models;
+﻿using backend.Library.Extensions;
 using backend.Library.Services.EventFinalizers;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;

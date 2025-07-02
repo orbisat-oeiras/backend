@@ -1,6 +1,4 @@
-using System.Globalization;
-using backend.Library.Services;
-using backend.Library.Services.DataProviders;
+﻿using backend.Library.Services.DataProviders;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace backend.Library.Services.DataProcessors.DataExtractors

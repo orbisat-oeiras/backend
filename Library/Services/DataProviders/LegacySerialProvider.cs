@@ -1,7 +1,5 @@
-﻿using System;
-using System.Globalization;
+﻿using System.Globalization;
 using System.IO.Ports;
-using System.Text.RegularExpressions;
 using backend.Library.Models;
 using Microsoft.Extensions.Logging;
 

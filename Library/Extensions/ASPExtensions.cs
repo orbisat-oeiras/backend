@@ -1,5 +1,4 @@
 ﻿using System.Text.Json;
-using backend.Library.Services.DataProviders;
 using backend.Library.Services.EventFinalizers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
