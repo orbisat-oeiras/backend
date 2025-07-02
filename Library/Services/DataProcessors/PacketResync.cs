@@ -6,14 +6,13 @@ namespace backend.Library.Services.DataProcessors
     internal class PacketResync
     {
         private const ulong WINDOW_NANOSECONDS = 100_000_000; // 100ms window
+        private const ulong STALE_THRESHOLD_NANOSECONDS = 0_500_000_000; // 0.5 seconds
         private readonly List<Packet> _resyncBuffer = [];
 
         private ulong? currentTimestamp = null;
 
         public void AddPacket(Packet packet)
         {
-            const ulong STALE_THRESHOLD_NANOSECONDS = 0_500_000_000; // 0.5 seconds
-
             if (
                 currentTimestamp != null
                 && packet.Timestamp - currentTimestamp > STALE_THRESHOLD_NANOSECONDS
