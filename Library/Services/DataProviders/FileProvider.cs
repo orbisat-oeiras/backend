@@ -73,7 +73,7 @@ namespace backend.Library.Services.DataProcessors.Analyzers
                         DeviceId.Accelerometer => SerialProvider.DataLabel.AccelerationData,
                         _ => throw new NotImplementedException(),
                     };
-                    _currentData[label] = packet.Payload.Value ?? BitConverter.GetBytes(1.0f);
+                    _currentData[label] = packet.Payload.Value ?? BitConverter.GetBytes(float.NaN);
                 }
 
                 ulong timestamp = list[0].Timestamp;
