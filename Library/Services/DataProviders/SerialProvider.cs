@@ -129,9 +129,17 @@ namespace backend.Library.Services.DataProviders
                             "Extracted packet: {packet}",
                             BitConverter.ToString([.. extractedPacket.Skip(2)]).Replace("-", "")
                         );
-                        Packet packet = Decode.GetPacketInformation(extractedPacket);
-                        packetResync.AddPacket(packet);
-                        newDataArrived = true;
+                        Packet? packet = Decode.GetPacketInformation(extractedPacket);
+
+                        if (packet == null || packet.Payload?.Value == null)
+                        {
+                            _logger.LogWarning("Invalid or corrupted packet.");
+                        }
+                        else
+                        {
+                            packetResync.AddPacket(packet);
+                            newDataArrived = true;
+                        }
                     }
                     if (!newDataArrived)
                     {
