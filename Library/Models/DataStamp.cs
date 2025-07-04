@@ -6,8 +6,7 @@
     public readonly struct DataStamp
     {
         /// <summary>
-        /// Milliseconds since the Arduino was initialized, registered
-        /// when the data was sent.
+        /// Nanosseconds since the Unix Epoch (00:00:00 UTC+0 1 January 1970).
         /// </summary>
         public ulong Timestamp { get; init; }
 
