@@ -28,7 +28,7 @@ namespace backend.Library.Services.DataProcessors.Analyzers
             {
                 throw new FileNotFoundException("The specified file does not exist.", filepath);
             }
-
+            int packetNumber = 0;
             byte[] fileBytes = File.ReadAllBytes(filepath);
 
             _packetBuffer.Add(fileBytes);
@@ -37,6 +37,10 @@ namespace backend.Library.Services.DataProcessors.Analyzers
 
             while ((extractedPacket = _packetBuffer.ExtractFirstValidPacket()) != null)
             {
+                if (packetNumber % 100 == 0)
+                {
+                    Console.WriteLine("Processing packet number: {0}", packetNumber);
+                }
                 Packet? packet = Decode.GetPacketInformation(extractedPacket);
                 if (packet == null || packet.Payload?.Value == null)
                 {
@@ -47,13 +51,15 @@ namespace backend.Library.Services.DataProcessors.Analyzers
                 {
                     _packetResync.AddPacket(packet);
                 }
-                Console.WriteLine(
-                    "Packet DeviceId: {0}, Timestamp: {1}, Payload Length: {2}",
-                    packet.DeviceId,
-                    packet.Timestamp,
-                    packet.Payload.Value.Length
-                );
+                // Console.WriteLine(
+                //     "Packet DeviceId: {0}, Timestamp: {1}, Payload Length: {2}",
+                //     packet.DeviceId,
+                //     packet.Timestamp,
+                //     packet.Payload.Value.Length
+                // );
+                packetNumber++;
             }
+            Console.WriteLine("Total packets processed: {0}", packetNumber);
 
             List<Packet>? list;
             Console.WriteLine("Getting next group of packets...");
