@@ -18,9 +18,6 @@ namespace backend.Library.Services.DataProviders
         /// <summary>
         /// Represent the index of each data piece in the list provided by a SerialProvider.
         /// </summary>
-        /// <remarks>
-        /// This enum must be updated to match the formatting of the data sent by the Arduino.
-        /// </remarks>
         public enum DataLabel
         {
             System,
