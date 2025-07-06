@@ -5,7 +5,7 @@ namespace backend.Library.Services.DataProcessors
     internal class PacketResync
     {
         private const ulong WINDOW_NANOSECONDS = 100_000_000; // 100ms window
-        private const ulong STALE_THRESHOLD_NANOSECONDS = 0_500_000_000; // 0.5 seconds
+        private const ulong STALE_THRESHOLD_NANOSECONDS = 1_000_000_000; // 1.0 seconds
         private readonly List<Packet> _resyncBuffer = [];
 
         private ulong? currentTimestamp = null;
@@ -46,6 +46,7 @@ namespace backend.Library.Services.DataProcessors
             foreach (Packet packet in group)
                 _resyncBuffer.Remove(packet);
 
+            currentTimestamp = null;
             return group;
         }
     }
