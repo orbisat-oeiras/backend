@@ -41,7 +41,6 @@ namespace backend.Library.Services.DataProviders
         // Logger provided by DI, used for printing information to all logging providers at once
         private readonly ILogger<SerialProvider> _logger;
         private readonly SerialPort _serialPort;
-        private readonly Dictionary<DataLabel, int> _schema = [];
         private readonly PacketResync packetResync = new();
         private readonly object _lock = new();
         private bool _isProcessing;
