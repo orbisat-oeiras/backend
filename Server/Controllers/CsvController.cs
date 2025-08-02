@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using backend.Library.Models;
 using backend.Library.Services.EventFinalizers;
 
@@ -29,8 +29,10 @@ namespace backend.Server.Controllers
 
         protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            string filePath = $"Data\\{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.csv";
-            Directory.CreateDirectory("Data");
+            string directory = "Data";
+            string fileName = $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.csv";
+            string filePath = Path.Combine(directory, fileName);
+            Directory.CreateDirectory(directory);
             _logger.LogInformation("CSV file path: {filePath}", filePath);
 
             try
