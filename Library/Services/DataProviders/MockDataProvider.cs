@@ -33,7 +33,7 @@ namespace backend.Library.Services.DataProviders
         public MockDataProvider(ILogger<MockDataProvider> logger)
         {
             _logger = logger;
-            _timer = new System.Timers.Timer(1000) { AutoReset = true };
+            _timer = new System.Timers.Timer(249) { AutoReset = true };
             _timer.Elapsed += GenerateMockData;
             _timer.Start();
             _logger.LogInformation("MockDataProvider started");
@@ -41,11 +41,11 @@ namespace backend.Library.Services.DataProviders
 
         private void GenerateMockData(object? sender, ElapsedEventArgs e)
         {
-            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1_000_000;
             _pressure += _random.Next(-100, 100);
             _altitude += _random.Next(-10, 10);
-            _temperature += _random.Next(-1, 1);
-            _humidity += _random.Next(-1, 1);
+            _temperature += _random.Next(-1, 1) * 0.01f;
+            _humidity += _random.Next(-1, 1) * 0.01f;
             _accelerationX += _random.Next(-1, 1) * 0.1f;
             _accelerationY += _random.Next(-1, 1) * 0.1f;
             _accelerationZ += _random.Next(-1, 1) * 0.1f;
