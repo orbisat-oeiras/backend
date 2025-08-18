@@ -38,45 +38,8 @@ namespace backend
                     IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>,
                     FileProvider
                 >(ServiceKeys.DataProvider);
-                // Register all the internal services, no idea if this is the best practice but uhh
-                // it works
 
-                // TODO: See if I can just use the same services as the serial provider
-
-                // This shouldn't really be a problem, because the person who is analysing a file
-                // isn't really expected to be using the serial data.
-
-                builder
-                    .Services.AddKeyedSingleton<IDataProvider<float>, PressureExtractor>(
-                        ServiceKeys.PressureExtractor
-                    )
-                    .AddFinalizer<PressureFinalizer>();
-
-                builder
-                    .Services.AddKeyedSingleton<IDataProvider<float>, HumidityExtractor>(
-                        ServiceKeys.HumidityExtractor
-                    )
-                    .AddFinalizer<HumidityFinalizer>();
-
-                builder
-                    .Services.AddKeyedSingleton<IDataProvider<float>, TemperatureExtractor>(
-                        ServiceKeys.TemperatureExtractor
-                    )
-                    .AddFinalizer<TemperatureFinalizer>();
-
-                builder
-                    .Services.AddKeyedSingleton<IDataProvider<float>, AltitudeExtractor>(
-                        ServiceKeys.AltitudeExtractor
-                    )
-                    .AddFinalizer<AltitudeFinalizer>();
-
-                builder
-                    .Services.AddKeyedSingleton<IDataProvider<float>, VelocityProcessor>(
-                        ServiceKeys.VelocityProcessor
-                    )
-                    .AddFinalizer<VelocityFinalizer>();
-
-                builder.Services.AddHostedService<CsvController>();
+                SubscribeToFinalizers(builder);
 
                 WebApplication fileApp = builder.Build();
 
@@ -142,6 +105,44 @@ namespace backend
                         )
                 );
             }
+
+            // This will register all classes annotated with ApiController
+            builder.Services.AddControllers();
+            // Set up Swagger/OpenAPI (learn more at https://aka.ms/aspnetcore/swashbuckle)
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
+
+            builder.Services.AddCors(options =>
+                options.AddDefaultPolicy(policy =>
+                    policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()
+                )
+            );
+
+            // Build an app from the configuration.
+            WebApplication app = builder.Build();
+
+            // Configure the HTTP request pipeline.
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+            }
+
+            app.UseHttpsRedirection();
+            app.UseCors();
+            app.UseAuthorization(); // TODO: Research this - is it necessary?
+            app.MapControllers();
+
+            // Start the app.
+            app.Run();
+        }
+
+        /// <summary>
+        /// Subscribes to finalizers for the services.
+        /// </summary>
+        /// <param name="builder">The web application builder.</param>
+        private static void SubscribeToFinalizers(WebApplicationBuilder builder)
+        {
             builder
                 .Services.AddKeyedSingleton<IDataProvider<float>, PressureExtractor>(
                     ServiceKeys.PressureExtractor
@@ -177,37 +178,7 @@ namespace backend
                     ServiceKeys.VelocityProcessor
                 )
                 .AddFinalizer<VelocityFinalizer>();
-
             builder.Services.AddHostedService<CsvController>();
-            // This will register all classes annotated with ApiController
-            builder.Services.AddControllers();
-            // Set up Swagger/OpenAPI (learn more at https://aka.ms/aspnetcore/swashbuckle)
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
-
-            builder.Services.AddCors(options =>
-                options.AddDefaultPolicy(policy =>
-                    policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()
-                )
-            );
-
-            // Build an app from the configuration.
-            WebApplication app = builder.Build();
-
-            // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
-
-            app.UseHttpsRedirection();
-            app.UseCors();
-            app.UseAuthorization(); // TODO: Research this - is it necessary?
-            app.MapControllers();
-
-            // Start the app.
-            app.Run();
         }
     }
 }
