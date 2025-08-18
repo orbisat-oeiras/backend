@@ -13,7 +13,7 @@ namespace backend.Server.Controllers
         private readonly IEnumerable<IFinalizedProvider> _eventFinalizers;
 
         private string? _currentTimestamp = null;
-        private readonly string[] _data = new string[9];
+        private readonly string[] _data = new string[10];
         private StreamWriter? _sw;
         private readonly object _lock = new();
 
@@ -40,7 +40,7 @@ namespace backend.Server.Controllers
                 using (_sw = new StreamWriter(filePath, true))
                 {
                     await _sw.WriteLineAsync(
-                        "pressure,temperature,altitude,humidity,latitude,longitude,velocity,altitudedelta,timestamp"
+                        "pressure,temperature,altitude,humidity,latitude,longitude,altitudegps,velocity,altitudedelta,timestamp"
                     );
                     await _sw.FlushAsync();
 
@@ -121,11 +121,11 @@ namespace backend.Server.Controllers
                                 payload.Data.content?.ToString()?.Replace(",", ".") ?? string.Empty;
                             break;
                         case "velocity":
-                            _data[6] =
+                            _data[7] =
                                 payload.Data.content?.ToString()?.Replace(",", ".") ?? string.Empty;
                             break;
                         case "altitudedelta":
-                            _data[7] =
+                            _data[8] =
                                 payload.Data.content?.ToString()?.Replace(",", ".") ?? string.Empty;
                             break;
                         default:
@@ -144,7 +144,12 @@ namespace backend.Server.Controllers
                         : payload.DataStamp.Coordinates.Longitude.ToString(
                             CultureInfo.InvariantCulture
                         );
-                    _data[8] = payload.DataStamp.Timestamp.ToString();
+                    _data[6] = float.IsNaN(payload.DataStamp.Coordinates.Altitude)
+                        ? "0"
+                        : payload.DataStamp.Coordinates.Altitude.ToString(
+                            CultureInfo.InvariantCulture
+                        );
+                    _data[9] = payload.DataStamp.Timestamp.ToString();
                 }
 
                 if (lineWritten)

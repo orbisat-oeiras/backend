@@ -206,6 +206,12 @@ namespace backend.Library.Services.DataProviders
                             )
                                 ? BitConverter.ToDouble(lonBytes, 8)
                                 : double.NaN,
+                            Altitude = _currentData.TryGetValue(
+                                SerialProvider.DataLabel.GPSData,
+                                out byte[]? altitudeBytes
+                            )
+                                ? BitConverter.ToSingle(altitudeBytes, 16)
+                                : float.NaN,
                         };
 
                         _logger.LogInformation(

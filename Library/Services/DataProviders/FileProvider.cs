@@ -13,6 +13,7 @@ namespace backend.Library.Services.DataProcessors.Analyzers
         public event Action<
             EventData<Dictionary<SerialProvider.DataLabel, byte[]>>
         >? OnDataProvided;
+
         private readonly PacketResync _packetResync = new();
         private readonly PacketBuffer _packetBuffer = new();
         private readonly Dictionary<SerialProvider.DataLabel, byte[]> _currentData = [];
@@ -21,7 +22,6 @@ namespace backend.Library.Services.DataProcessors.Analyzers
         /// Analyse the contents of a binary file and extract packets.
         /// </summary>
         /// <param name="filepath">Path to the binary file.</param>
-
         public void AnalyseFileContents(string filepath)
         {
             if (!File.Exists(filepath))
@@ -98,6 +98,12 @@ namespace backend.Library.Services.DataProcessors.Analyzers
                     )
                         ? BitConverter.ToDouble(lonBytes, 8)
                         : double.NaN,
+                    Altitude = _currentData.TryGetValue(
+                        SerialProvider.DataLabel.GPSData,
+                        out byte[]? altitudeBytes
+                    )
+                        ? BitConverter.ToSingle(altitudeBytes, 16)
+                        : float.NaN,
                 };
 
                 OnDataProvided?.Invoke(
