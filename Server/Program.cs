@@ -29,7 +29,7 @@ namespace backend
             Console.CancelKeyPress += (sender, eventArgs) =>
             {
                 AnsiConsole.MarkupLine("[red]Shutting down...[/]");
-                Environment.Exit(0);
+                Environment.Exit(1223); // Exit Code 1223 (ERROR_CANCELLED)
             };
 
             if (args.Length > 1 && args[0] == "--read-file")
@@ -66,9 +66,9 @@ namespace backend
                 catch (FileNotFoundException)
                 {
                     Console.WriteLine($"File {filepath} not found.");
-                    Environment.Exit(2);
+                    Environment.Exit(2); // Exit Code 2 (ERROR_FILE_NOT_FOUND)
                 }
-                Environment.Exit(0);
+                Environment.Exit(0); // Exit Code 0 (ERROR_SUCCESS) - error here doesn't actually mean failure
             }
             // Get the name of the serial port where data is arriving
             string serialPortName = AnsiConsole.Prompt(
