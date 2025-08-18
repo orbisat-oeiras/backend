@@ -105,7 +105,7 @@ namespace backend
                         )
                 );
             }
-
+            SubscribeToFinalizers(builder);
             // This will register all classes annotated with ApiController
             builder.Services.AddControllers();
             // Set up Swagger/OpenAPI (learn more at https://aka.ms/aspnetcore/swashbuckle)
