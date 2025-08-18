@@ -57,16 +57,18 @@ namespace backend
                 }
 
                 string filepath = args[1];
-
-                if (!File.Exists(filepath))
+                try
                 {
-                    Console.WriteLine($"File {filepath} does not exist.");
-                    return;
+                    fileProvider.AnalyseFileContents(filepath);
+
+                    Console.WriteLine($"File {filepath} processed successfully.");
                 }
-
-                fileProvider.AnalyseFileContents(filepath);
-
-                Console.WriteLine($"File {filepath} processed successfully.");
+                catch (FileNotFoundException)
+                {
+                    Console.WriteLine($"File {filepath} not found.");
+                    Environment.Exit(2);
+                }
+                Environment.Exit(0);
             }
             // Get the name of the serial port where data is arriving
             string serialPortName = AnsiConsole.Prompt(

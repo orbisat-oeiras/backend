@@ -24,10 +24,6 @@ namespace backend.Library.Services.DataProcessors.Analyzers
         /// <param name="filepath">Path to the binary file.</param>
         public void AnalyseFileContents(string filepath)
         {
-            if (!File.Exists(filepath))
-            {
-                throw new FileNotFoundException("The specified file does not exist.", filepath);
-            }
             int packetNumber = 0;
             byte[] fileBytes = File.ReadAllBytes(filepath);
 
