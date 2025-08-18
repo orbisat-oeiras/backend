@@ -8,13 +8,13 @@ namespace backend.Library.Services.DataProcessors
         private const ulong STALE_THRESHOLD_NANOSECONDS = 1_000_000_000; // 1.0 seconds
         private readonly List<Packet> _resyncBuffer = [];
 
-        private ulong? currentTimestamp = null;
+        private ulong? _currentTimestamp = null;
 
         public void AddPacket(Packet packet)
         {
             if (
-                currentTimestamp != null
-                && packet.Timestamp - currentTimestamp > STALE_THRESHOLD_NANOSECONDS
+                _currentTimestamp != null
+                && packet.Timestamp - _currentTimestamp > STALE_THRESHOLD_NANOSECONDS
             )
             {
                 // Console.WriteLine(
@@ -22,12 +22,12 @@ namespace backend.Library.Services.DataProcessors
                 // );
                 // Console.WriteLine("Current Timestamp:" + currentTimestamp);
                 // Console.WriteLine("Packet Timestamp:" + packet.Timestamp);
-                currentTimestamp = packet.Timestamp;
+                _currentTimestamp = packet.Timestamp;
                 return;
             }
             _resyncBuffer.Add(packet);
 
-            currentTimestamp = packet.Timestamp;
+            _currentTimestamp = packet.Timestamp;
         }
 
         public List<Packet> GetNextGroup()
@@ -46,7 +46,7 @@ namespace backend.Library.Services.DataProcessors
             foreach (Packet packet in group)
                 _resyncBuffer.Remove(packet);
 
-            currentTimestamp = null;
+            _currentTimestamp = null;
             return group;
         }
     }
