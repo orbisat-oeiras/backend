@@ -167,12 +167,6 @@ namespace backend
                 .AddFinalizer<AltitudeFinalizer>();
 
             builder
-                .Services.AddKeyedSingleton<IDataProvider<float>, AltitudeGPSExtractor>(
-                    ServiceKeys.AltitudeGPSExtractor
-                )
-                .AddFinalizer<AltitudeGPSFinalizer>();
-
-            builder
                 .Services.AddKeyedSingleton<IDataProvider<float>, AltitudeDeltaProcessor>(
                     ServiceKeys.AltitudeDeltaProcessor
                 )
