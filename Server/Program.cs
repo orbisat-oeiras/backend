@@ -165,21 +165,6 @@ namespace backend
                     ServiceKeys.AltitudeExtractor
                 )
                 .AddFinalizer<AltitudeFinalizer>();
-            builder
-                .Services.AddKeyedSingleton<IDataProvider<float>, AccelerationZExtractor>(
-                    ServiceKeys.AccelerationZExtractor
-                )
-                .AddFinalizer<AccelerationZFinalizer>();
-            builder
-                .Services.AddKeyedSingleton<IDataProvider<float>, AccelerationXExtractor>(
-                    ServiceKeys.AccelerationXExtractor
-                )
-                .AddFinalizer<AccelerationXFinalizer>();
-            builder
-                .Services.AddKeyedSingleton<IDataProvider<float>, AccelerationYExtractor>(
-                    ServiceKeys.AccelerationYExtractor
-                )
-                .AddFinalizer<AccelerationYFinalizer>();
 
             builder
                 .Services.AddKeyedSingleton<IDataProvider<float>, AltitudeGPSExtractor>(
