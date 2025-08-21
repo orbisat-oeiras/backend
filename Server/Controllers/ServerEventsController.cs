@@ -19,6 +19,10 @@ namespace backend.Server.Controllers
         // List of registered event finalizers, which provide ready-to-send events
         private readonly IEnumerable<IFinalizedProvider> _eventFinalizers;
 
+        // Cancellation token for graceful shutdown
+        // This is used to stop the SSE loop when the server is shutting down
+        private readonly CancellationToken cancellationToken = Program.ShutdownTokenSource.Token;
+
         /// <summary>
         /// Create a new instance of ServerEventsController
         /// </summary>
@@ -47,9 +51,6 @@ namespace backend.Server.Controllers
             // Set the response headers; this tells the client we're initiating SSE
             Response.Headers.ContentType = "text/event-stream";
             Response.Headers.CacheControl = "no-cache";
-
-            TaskCompletionSource tcs = new();
-            CancellationToken cancellationToken = HttpContext.RequestAborted;
 
             foreach (IFinalizedProvider eventFinalizer in _eventFinalizers)
             {
@@ -85,12 +86,19 @@ namespace backend.Server.Controllers
                 };
             }
 
-            // Keep the connection open until the client disconnects
-            // This keeps the data generation loop running, even though the client is not connected
-            // This also just works, I'm not sure why
-            cancellationToken.WaitHandle.WaitOne();
-            tcs.TrySetResult();
-            await tcs.Task;
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    // Wait infinetely for the cancellation token to be triggered
+                    await Task.Delay(-1, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Exit the loop
+                    break;
+                }
+            }
         }
     }
 }

@@ -14,6 +14,8 @@ namespace backend
 {
     public class Program
     {
+        public static CancellationTokenSource ShutdownTokenSource = new();
+
         public static void Main(string[] args)
         {
             // Create a builder, using the arguments passed from the command line.
@@ -28,8 +30,7 @@ namespace backend
 
             Console.CancelKeyPress += (sender, eventArgs) =>
             {
-                AnsiConsole.MarkupLine("[red]Shutting down...[/]");
-                Environment.Exit(1223); // Exit Code 1223 (ERROR_CANCELLED)
+                ShutdownTokenSource.Cancel();
             };
 
             if (args.Length > 1 && args[0] == "--read-file")
