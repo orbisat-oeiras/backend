@@ -19,10 +19,6 @@ namespace backend.Server.Controllers
         // List of registered event finalizers, which provide ready-to-send events
         private readonly IEnumerable<IFinalizedProvider> _eventFinalizers;
 
-        // Cancellation token for graceful shutdown
-        // This is used to stop the SSE loop when the server is shutting down
-        private readonly CancellationToken cancellationToken = Program.ShutdownTokenSource.Token;
-
         /// <summary>
         /// Create a new instance of ServerEventsController
         /// </summary>
@@ -51,6 +47,8 @@ namespace backend.Server.Controllers
             // Set the response headers; this tells the client we're initiating SSE
             Response.Headers.ContentType = "text/event-stream";
             Response.Headers.CacheControl = "no-cache";
+
+            CancellationToken cancellationToken = Program.ShutdownTokenSource.Token;
 
             foreach (IFinalizedProvider eventFinalizer in _eventFinalizers)
             {
