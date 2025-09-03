@@ -52,7 +52,7 @@ namespace backend.Server.Controllers
                         eventFinalizer.OnDataProvided += HandleData; // Direct subscription
                     }
 
-                    await Task.Delay(Timeout.Infinite, cancellationToken);
+                    await Task.Delay(-1, cancellationToken);
                 }
             }
             catch (OperationCanceledException)
@@ -86,11 +86,8 @@ namespace backend.Server.Controllers
                 string incomingTimestamp = payload.DataStamp.Timestamp.ToString();
                 bool lineWritten = false;
 
-                lock (_lock)
+                lock (_lock) // Ensure thread safety
                 {
-                    if (_sw == null)
-                        return;
-
                     if (_currentTimestamp != null && incomingTimestamp != _currentTimestamp)
                     {
                         _sw.WriteLine(string.Join(",", _data));
