@@ -93,151 +93,145 @@ namespace backend.Library.Services.DataProviders
         /// <param name="e"></param>
         private void ReceiveAndSendData(object? sender, System.Timers.ElapsedEventArgs e)
         {
-            lock (_lock)
+            _timer.Start();
+            try
             {
-                _timer.Start();
-                try
+                if (_isProcessing) // Avoid re-entrancy
                 {
-                    if (_isProcessing)
+                    return;
+                }
+
+                _isProcessing = true;
+                _timer.Stop();
+                _logger.LogInformation("Receiving...");
+
+                int byteNumber = _serialPort.BytesToRead;
+                byte[] byteBuffer = new byte[byteNumber];
+                if (byteNumber != 0)
+                {
+                    _serialPort.Read(byteBuffer, 0, byteNumber);
+                    _packetBuffer.Add(byteBuffer);
+                }
+
+                bool newDataArrived = false;
+                byte[]? extractedPacket;
+
+                // Use the same approach I used in testing
+                while ((extractedPacket = _packetBuffer.ExtractFirstValidPacket()) != null)
+                {
+                    _logger.LogInformation(
+                        "Extracted packet: {packet}",
+                        BitConverter.ToString([.. extractedPacket.Skip(2)]).Replace("-", "")
+                    );
+                    Packet? packet = Decode.GetPacketInformation(extractedPacket);
+
+                    if (packet == null || packet.Payload?.Value == null)
                     {
+                        _logger.LogWarning("Invalid or corrupted packet.");
+                    }
+                    else
+                    {
+                        packetResync.AddPacket(packet);
+                        newDataArrived = true;
+                    }
+                }
+                if (!newDataArrived)
+                {
+                    _logger.LogWarning("No valid packets extracted from buffer.");
+                }
+                if (newDataArrived)
+                {
+                    List<Packet>? list;
+                    _logger.LogInformation("Getting next group of packets...");
+                    list = packetResync.GetNextGroup();
+
+                    if (list == null)
+                    {
+                        _logger.LogWarning("No packets returned by GetNextGroup.");
                         return;
                     }
 
-                    _isProcessing = true;
-                    _timer.Stop();
-                    _logger.LogInformation("Receiving...");
-
-                    int byteNumber = _serialPort.BytesToRead;
-                    byte[] byteBuffer = new byte[byteNumber];
-                    if (byteNumber != 0)
+                    foreach (Packet packet in list)
                     {
-                        _serialPort.Read(byteBuffer, 0, byteNumber);
-                        _packetBuffer.Add(byteBuffer);
-                    }
-
-                    bool newDataArrived = false;
-                    byte[]? extractedPacket;
-
-                    // Use the same approach I used in testing
-                    while ((extractedPacket = _packetBuffer.ExtractFirstValidPacket()) != null)
-                    {
-                        _logger.LogInformation(
-                            "Extracted packet: {packet}",
-                            BitConverter.ToString([.. extractedPacket.Skip(2)]).Replace("-", "")
-                        );
-                        Packet? packet = Decode.GetPacketInformation(extractedPacket);
-
-                        if (packet == null || packet.Payload?.Value == null)
+                        DataLabel label = packet.DeviceId switch
                         {
-                            _logger.LogWarning("Invalid or corrupted packet.");
+                            DeviceId.PressureSensor => DataLabel.Pressure,
+                            DeviceId.TemperatureSensor => DataLabel.Temperature,
+                            DeviceId.HumiditySensor => DataLabel.Humidity,
+                            DeviceId.System => DataLabel.System,
+                            DeviceId.Unknown => DataLabel.Unknown,
+                            DeviceId.GPS => DataLabel.GPSData,
+                            DeviceId.Accelerometer => DataLabel.AccelerationData,
+                            _ => throw new NotImplementedException(),
+                        };
+                        _currentData[label] = packet.Payload.Value;
+
+                        // These logs can easily be removed, but
+                        // they are converting from byte[] to string at every packet received.
+                        if (label == DataLabel.System)
+                        {
+                            _logger.LogInformation(
+                                "System data: {data}",
+                                Encoding.ASCII.GetString(packet.Payload.Value)
+                            );
                         }
                         else
                         {
-                            packetResync.AddPacket(packet);
-                            newDataArrived = true;
+                            _logger.LogInformation(
+                                "{label} data: {data}",
+                                label,
+                                BitConverter
+                                    .ToSingle(packet.Payload.Value, 0)
+                                    .ToString(CultureInfo.InvariantCulture)
+                            );
                         }
                     }
-                    if (!newDataArrived)
+
+                    Dictionary<DataLabel, byte[]> dict = new(_currentData);
+                    ulong timestamp = list[0].Timestamp;
+
+                    GPSCoords coords = new()
                     {
-                        _logger.LogWarning("No valid packets extracted from buffer.");
-                    }
-                    if (newDataArrived)
-                    {
-                        List<Packet>? list;
-                        _logger.LogInformation("Getting next group of packets...");
-                        list = packetResync.GetNextGroup();
+                        Latitude = _currentData.TryGetValue(DataLabel.GPSData, out byte[]? latBytes)
+                            ? BitConverter.ToDouble(latBytes, 0)
+                            : double.NaN,
+                        Longitude = _currentData.TryGetValue(
+                            DataLabel.GPSData,
+                            out byte[]? lonBytes
+                        )
+                            ? BitConverter.ToDouble(lonBytes, 8)
+                            : double.NaN,
+                        Altitude = _currentData.TryGetValue(
+                            SerialProvider.DataLabel.GPSData,
+                            out byte[]? altitudeBytes
+                        )
+                            ? BitConverter.ToSingle(altitudeBytes, 16)
+                            : float.NaN,
+                    };
 
-                        if (list == null)
+                    _logger.LogInformation(
+                        "GPS Data: {coords}",
+                        coords.Latitude + ", " + coords.Longitude
+                    );
+
+                    OnDataProvided?.Invoke(
+                        new EventData<Dictionary<DataLabel, byte[]>>
                         {
-                            _logger.LogWarning("No packets returned by GetNextGroup.");
-                            return;
+                            DataStamp = new DataStamp
+                            {
+                                Timestamp = timestamp,
+                                Coordinates = coords,
+                            },
+                            Data = dict,
                         }
-
-                        foreach (Packet packet in list)
-                        {
-                            DataLabel label = packet.DeviceId switch
-                            {
-                                DeviceId.PressureSensor => DataLabel.Pressure,
-                                DeviceId.TemperatureSensor => DataLabel.Temperature,
-                                DeviceId.HumiditySensor => DataLabel.Humidity,
-                                DeviceId.System => DataLabel.System,
-                                DeviceId.Unknown => DataLabel.Unknown,
-                                DeviceId.GPS => DataLabel.GPSData,
-                                DeviceId.Accelerometer => DataLabel.AccelerationData,
-                                _ => throw new NotImplementedException(),
-                            };
-                            _currentData[label] = packet.Payload.Value;
-
-                            // These logs can easily be removed, but
-                            // they are converting from byte[] to string at every packet received.
-                            if (label == DataLabel.System)
-                            {
-                                _logger.LogInformation(
-                                    "System data: {data}",
-                                    Encoding.ASCII.GetString(packet.Payload.Value)
-                                );
-                            }
-                            else
-                            {
-                                _logger.LogInformation(
-                                    "{label} data: {data}",
-                                    label,
-                                    BitConverter
-                                        .ToSingle(packet.Payload.Value, 0)
-                                        .ToString(CultureInfo.InvariantCulture)
-                                );
-                            }
-                        }
-
-                        Dictionary<DataLabel, byte[]> dict = new(_currentData);
-                        ulong timestamp = list[0].Timestamp;
-
-                        GPSCoords coords = new()
-                        {
-                            Latitude = _currentData.TryGetValue(
-                                DataLabel.GPSData,
-                                out byte[]? latBytes
-                            )
-                                ? BitConverter.ToDouble(latBytes, 0)
-                                : double.NaN,
-                            Longitude = _currentData.TryGetValue(
-                                DataLabel.GPSData,
-                                out byte[]? lonBytes
-                            )
-                                ? BitConverter.ToDouble(lonBytes, 8)
-                                : double.NaN,
-                            Altitude = _currentData.TryGetValue(
-                                SerialProvider.DataLabel.GPSData,
-                                out byte[]? altitudeBytes
-                            )
-                                ? BitConverter.ToSingle(altitudeBytes, 16)
-                                : float.NaN,
-                        };
-
-                        _logger.LogInformation(
-                            "GPS Data: {coords}",
-                            coords.Latitude + ", " + coords.Longitude
-                        );
-
-                        OnDataProvided?.Invoke(
-                            new EventData<Dictionary<DataLabel, byte[]>>
-                            {
-                                DataStamp = new DataStamp
-                                {
-                                    Timestamp = timestamp,
-                                    Coordinates = coords,
-                                },
-                                Data = dict,
-                            }
-                        );
-                        _currentData.Clear();
-                    }
+                    );
+                    _currentData.Clear();
                 }
-                finally
-                {
-                    _isProcessing = false;
-                    _timer.Start();
-                }
+            }
+            finally
+            {
+                _isProcessing = false;
+                _timer.Start();
             }
         }
 
