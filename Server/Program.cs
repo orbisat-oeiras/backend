@@ -72,16 +72,7 @@ namespace backend
                 Environment.Exit(0); // Exit Code 0 (ERROR_SUCCESS) - error here doesn't actually mean failure
             }
             // Get the name of the serial port where data is arriving
-            string serialPortName = AnsiConsole.Prompt(
-                new SelectionPrompt<string>()
-                    .Title(
-                        "Please select the serial port where the [blue]APC220 module[/] is connected."
-                    )
-                    .PageSize(10)
-                    .AddChoices(SerialPort.GetPortNames())
-                    .AddChoices("Mock Serial Data")
-                    .HighlightStyle(new Style(foreground: Color.White, background: Color.Blue))
-            );
+            string serialPortName = PromptPortName();
             Console.WriteLine($"Selected port: {serialPortName}");
             // Add services to the container.
             // Register internal services, using keyed services
@@ -182,6 +173,26 @@ namespace backend
                 )
                 .AddFinalizer<VelocityFinalizer>();
             builder.Services.AddHostedService<CsvController>();
+        }
+
+        private static string PromptPortName()
+        {
+            string port = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title(
+                        "Please select the serial port where the [blue]APC220 module[/] is connected."
+                    )
+                    .PageSize(10)
+                    .AddChoices(SerialPort.GetPortNames())
+                    .AddChoices("Mock Serial Data")
+                    .AddChoices("Custom Serial Port")
+                    .HighlightStyle(new Style(foreground: Color.White, background: Color.Blue))
+            );
+            if (port == "Custom Serial Port")
+            {
+                port = AnsiConsole.Ask<string>("Please enter the [blue]custom port name[/]:");
+            }
+            return port;
         }
     }
 }
