@@ -13,5 +13,6 @@
         AccelerationXExtractor,
         AccelerationYExtractor,
         AccelerationZExtractor,
+        SerialSender,
     }
 }
