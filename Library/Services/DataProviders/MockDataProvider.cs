@@ -33,7 +33,7 @@ namespace backend.Library.Services.DataProviders
         public MockDataProvider(ILogger<MockDataProvider> logger)
         {
             _logger = logger;
-            _timer = new System.Timers.Timer(249) { AutoReset = true };
+            _timer = new System.Timers.Timer(250) { AutoReset = true };
             _timer.Elapsed += GenerateMockData;
             _timer.Start();
             _logger.LogInformation("MockDataProvider started");

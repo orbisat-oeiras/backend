@@ -106,9 +106,9 @@ namespace backend.Library.Services.DataProviders
                 _logger.LogInformation("Receiving...");
 
                 int byteNumber = _serialPort.BytesToRead;
-                byte[] byteBuffer = new byte[byteNumber];
                 if (byteNumber != 0)
                 {
+                    byte[] byteBuffer = new byte[byteNumber];
                     _serialPort.Read(byteBuffer, 0, byteNumber);
                     _packetBuffer.Add(byteBuffer);
                 }
@@ -121,7 +121,7 @@ namespace backend.Library.Services.DataProviders
                 {
                     _logger.LogInformation(
                         "Extracted packet: {packet}",
-                        BitConverter.ToString([.. extractedPacket.Skip(2)]).Replace("-", "")
+                        BitConverter.ToString([.. extractedPacket.Skip(2)]).Replace("-", " ")
                     );
                     Packet? packet = Decode.GetPacketInformation(extractedPacket);
 
@@ -139,7 +139,7 @@ namespace backend.Library.Services.DataProviders
                 {
                     _logger.LogWarning("No valid packets extracted from buffer.");
                 }
-                if (newDataArrived)
+                else
                 {
                     List<Packet>? list;
                     _logger.LogInformation("Getting next group of packets...");
