@@ -8,16 +8,17 @@ namespace backend.Library.Services.DataProviders
     /// Provides fake data created on the fly.
     /// </summary>
     public sealed class MockDataProvider
-        : IDataProvider<Dictionary<SerialProvider.DataLabel, string>>,
+        : IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>,
             IDisposable
     {
         private readonly Random _random = new();
         public event Action<
-            EventData<Dictionary<SerialProvider.DataLabel, string>>
+            EventData<Dictionary<SerialProvider.DataLabel, byte[]>>
         >? OnDataProvided;
         private float _altitude = 1000;
         private float _temperature = 20;
         private float _pressure = 100000;
+        private float _humidity = 50;
         private float _accelerationX,
             _accelerationY,
             _accelerationZ;
@@ -32,7 +33,7 @@ namespace backend.Library.Services.DataProviders
         public MockDataProvider(ILogger<MockDataProvider> logger)
         {
             _logger = logger;
-            _timer = new System.Timers.Timer(1000) { AutoReset = true };
+            _timer = new System.Timers.Timer(250) { AutoReset = true };
             _timer.Elapsed += GenerateMockData;
             _timer.Start();
             _logger.LogInformation("MockDataProvider started");
@@ -40,48 +41,45 @@ namespace backend.Library.Services.DataProviders
 
         private void GenerateMockData(object? sender, ElapsedEventArgs e)
         {
-            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1_000_000;
             _pressure += _random.Next(-100, 100);
             _altitude += _random.Next(-10, 10);
-            _temperature += _random.Next(-1, 1);
+            _temperature += _random.Next(-1, 1) * 0.01f;
+            _humidity += _random.Next(-1, 1) * 0.01f;
             _accelerationX += _random.Next(-1, 1) * 0.1f;
             _accelerationY += _random.Next(-1, 1) * 0.1f;
             _accelerationZ += _random.Next(-1, 1) * 0.1f;
             _latitude = 36;
             _longitude = -25;
 
-            Dictionary<SerialProvider.DataLabel, string> lastData = new Dictionary<
+            Dictionary<SerialProvider.DataLabel, byte[]> lastData = new Dictionary<
                 SerialProvider.DataLabel,
-                string
+                byte[]
             >
             {
-                { SerialProvider.DataLabel.Timestamp, now.ToString() },
-                { SerialProvider.DataLabel.Pressure, _pressure.ToString() },
-                { SerialProvider.DataLabel.Temperature, _temperature.ToString() },
-                { SerialProvider.DataLabel.AccelerationX, _accelerationX.ToString() },
-                { SerialProvider.DataLabel.AccelerationY, _accelerationY.ToString() },
-                { SerialProvider.DataLabel.AccelerationZ, _accelerationZ.ToString() },
-                { SerialProvider.DataLabel.Latitude, _latitude.ToString() },
-                { SerialProvider.DataLabel.Longitude, _longitude.ToString() },
-                { SerialProvider.DataLabel.Altitude, _altitude.ToString() },
+                { SerialProvider.DataLabel.Timestamp, BitConverter.GetBytes(now) },
+                { SerialProvider.DataLabel.Pressure, BitConverter.GetBytes(_pressure) },
+                { SerialProvider.DataLabel.Temperature, BitConverter.GetBytes(_temperature) },
+                { SerialProvider.DataLabel.Humidity, BitConverter.GetBytes(_humidity) },
+                { SerialProvider.DataLabel.Latitude, BitConverter.GetBytes(_latitude) },
+                { SerialProvider.DataLabel.Longitude, BitConverter.GetBytes(_longitude) },
             };
             OnDataProvided?.Invoke(
-                new EventData<Dictionary<SerialProvider.DataLabel, string>>
+                new EventData<Dictionary<SerialProvider.DataLabel, byte[]>>
                 {
                     DataStamp = new DataStamp
                     {
-                        Timestamp = now,
+                        Timestamp = (ulong)now,
                         Coordinates = new GPSCoords
                         {
                             Latitude = _latitude,
                             Longitude = _longitude,
-                            Altitude = _altitude,
                         },
                     },
                     Data = lastData,
                 }
             );
-            _logger.LogInformation("Genereted Mock Data");
+            _logger.LogInformation("Generated Mock Data");
         }
 
         public void Dispose()

@@ -1,6 +1,4 @@
-﻿using System.Globalization;
-using backend.Library.Services;
-using backend.Library.Services.DataProviders;
+﻿using backend.Library.Services.DataProviders;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace backend.Library.Services.DataProcessors.DataExtractors
@@ -12,7 +10,7 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
     {
         public AltitudeExtractor(
             [FromKeyedServices(ServiceKeys.DataProvider)]
-                IDataProvider<Dictionary<SerialProvider.DataLabel, string>> provider
+                IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>> provider
         )
             : base(provider)
         {
@@ -23,11 +21,11 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
             ];
         }
 
-        protected override float Convert(IEnumerable<string> data)
+        protected override float Convert(IEnumerable<byte[]> data)
         {
-            float pressure = float.Parse(data.First(), CultureInfo.InvariantCulture);
-            // Add 273.15 to convert from Celsius to kelvin
-            float temperature = float.Parse(data.Last(), CultureInfo.InvariantCulture) + 273.15f;
+            float pressure = BitConverter.ToSingle(data.First(), 0);
+            // The temperature is stored in the second byte array, so we need to skip the first one.
+            float temperature = BitConverter.ToSingle(data.ElementAt(1), 0) + 273.15f;
 
             // Calculate the altitude from pressure and temperature. Based on the first formula from
             // https://physics.stackexchange.com/questions/333475/how-to-calculate-altitude-from-current-temperature-and-pressure

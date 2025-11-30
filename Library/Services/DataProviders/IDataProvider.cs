@@ -12,6 +12,6 @@ namespace backend.Library.Services.DataProviders
         /// Event triggered whenever the provider has new data.
         /// Subscribe to this event to act on the new data.
         /// </summary>
-        public event Action<EventData<T>>? OnDataProvided;
+        event Action<EventData<T>>? OnDataProvided;
     }
 }

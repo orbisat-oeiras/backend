@@ -4,21 +4,21 @@ using Microsoft.Extensions.DependencyInjection;
 namespace backend.Library.Services.DataProcessors.DataExtractors
 {
     /// <summary>
-    /// Extracts pressure data from SerialProvider data.
+    /// Extracts Acceleration Z data from SerialProvider data.
     /// </summary>
-    public class PressureExtractor : DataExtractorBase<float>
+    public class AccelerationZExtractor : DataExtractorBase<float>
     {
-        public PressureExtractor(
+        public AccelerationZExtractor(
             [FromKeyedServices(ServiceKeys.DataProvider)]
                 IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>> provider
         )
             : base(provider)
         {
-            // Extract pressure data
-            _sourceIndexes = [SerialProvider.DataLabel.Pressure];
+            // Extract Acceleration Z data
+            _sourceIndexes = [SerialProvider.DataLabel.AccelerationZ];
         }
 
         protected override float Convert(IEnumerable<byte[]> data) =>
-            BitConverter.ToSingle(data.First(), 0);
+            BitConverter.ToSingle(data.First(), 8);
     }
 }

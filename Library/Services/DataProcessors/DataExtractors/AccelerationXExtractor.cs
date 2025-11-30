@@ -4,18 +4,18 @@ using Microsoft.Extensions.DependencyInjection;
 namespace backend.Library.Services.DataProcessors.DataExtractors
 {
     /// <summary>
-    /// Extracts pressure data from SerialProvider data.
+    /// Extracts Acceleration X data from SerialProvider data.
     /// </summary>
-    public class PressureExtractor : DataExtractorBase<float>
+    public class AccelerationXExtractor : DataExtractorBase<float>
     {
-        public PressureExtractor(
+        public AccelerationXExtractor(
             [FromKeyedServices(ServiceKeys.DataProvider)]
                 IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>> provider
         )
             : base(provider)
         {
-            // Extract pressure data
-            _sourceIndexes = [SerialProvider.DataLabel.Pressure];
+            // Extract Acceleration X data
+            _sourceIndexes = [SerialProvider.DataLabel.AccelerationX];
         }
 
         protected override float Convert(IEnumerable<byte[]> data) =>

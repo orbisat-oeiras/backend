@@ -4,18 +4,18 @@ using Microsoft.Extensions.DependencyInjection;
 namespace backend.Library.Services.DataProcessors.DataExtractors
 {
     /// <summary>
-    /// Extracts pressure data from SerialProvider data.
+    /// Extracts humidity data from SerialProvider data.
     /// </summary>
-    public class PressureExtractor : DataExtractorBase<float>
+    public class HumidityExtractor : DataExtractorBase<float>
     {
-        public PressureExtractor(
+        public HumidityExtractor(
             [FromKeyedServices(ServiceKeys.DataProvider)]
                 IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>> provider
         )
             : base(provider)
         {
-            // Extract pressure data
-            _sourceIndexes = [SerialProvider.DataLabel.Pressure];
+            // Extract humidity data
+            _sourceIndexes = [SerialProvider.DataLabel.Humidity];
         }
 
         protected override float Convert(IEnumerable<byte[]> data) =>

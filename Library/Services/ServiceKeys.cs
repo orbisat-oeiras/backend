@@ -9,5 +9,9 @@
         AltitudeGPSExtractor,
         AltitudeDeltaProcessor,
         VelocityProcessor,
+        HumidityExtractor,
+        AccelerationXExtractor,
+        AccelerationYExtractor,
+        AccelerationZExtractor,
     }
 }

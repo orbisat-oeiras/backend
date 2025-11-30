@@ -7,3 +7,6 @@
 # Set default behaviour for command prompt diff.
 ###############################################################################
 *.cs     diff=csharp
+
+# Ignore doxygen folder for language detection
+doxygen/* linguist-vendored
