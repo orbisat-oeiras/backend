@@ -49,8 +49,8 @@ namespace backend.Library.Services.DataProviders
             _accelerationX += _random.Next(-1, 1) * 0.1f;
             _accelerationY += _random.Next(-1, 1) * 0.1f;
             _accelerationZ += _random.Next(-1, 1) * 0.1f;
-            _latitude = 36;
-            _longitude = -25;
+            _latitude = 38.685347f;
+            _longitude = -9.318425f;
 
             Dictionary<SerialProvider.DataLabel, byte[]> lastData = new Dictionary<
                 SerialProvider.DataLabel,
