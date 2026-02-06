@@ -33,7 +33,7 @@ namespace backend.Library.Services.DataProviders
         public MockDataProvider(ILogger<MockDataProvider> logger)
         {
             _logger = logger;
-            _timer = new System.Timers.Timer(249) { AutoReset = true };
+            _timer = new System.Timers.Timer(250) { AutoReset = true };
             _timer.Elapsed += GenerateMockData;
             _timer.Start();
             _logger.LogInformation("MockDataProvider started");
@@ -49,8 +49,8 @@ namespace backend.Library.Services.DataProviders
             _accelerationX += _random.Next(-1, 1) * 0.1f;
             _accelerationY += _random.Next(-1, 1) * 0.1f;
             _accelerationZ += _random.Next(-1, 1) * 0.1f;
-            _latitude = 36;
-            _longitude = -25;
+            _latitude = 38.685347f;
+            _longitude = -9.318425f;
 
             Dictionary<SerialProvider.DataLabel, byte[]> lastData = new Dictionary<
                 SerialProvider.DataLabel,
