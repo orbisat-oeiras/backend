@@ -4,8 +4,8 @@ namespace backend.Library.Services.DataProcessors
 {
     internal class PacketResync
     {
-        private const ulong WINDOW_NANOSECONDS = 100_000_000; // 100ms window
-        private const ulong STALE_THRESHOLD_NANOSECONDS = 1_000_000_000; // 1.0 seconds
+        private const ulong WINDOW_MICROSECONDS = 100_000; // 100 microseconds window
+        private const ulong STALE_THRESHOLD_MICROSECONDS = 1_000_000; // 1.0 seconds
         private readonly List<Packet> _resyncBuffer = [];
 
         private ulong? _currentTimestamp = null;
@@ -14,7 +14,7 @@ namespace backend.Library.Services.DataProcessors
         {
             if (
                 _currentTimestamp != null
-                && packet.Timestamp - _currentTimestamp > STALE_THRESHOLD_NANOSECONDS
+                && packet.Timestamp - _currentTimestamp > STALE_THRESHOLD_MICROSECONDS
             )
             {
                 // Console.WriteLine(
@@ -40,7 +40,9 @@ namespace backend.Library.Services.DataProcessors
 
             List<Packet> group =
             [
-                .. _resyncBuffer.TakeWhile(p => p.Timestamp - firstTimestamp <= WINDOW_NANOSECONDS),
+                .. _resyncBuffer.TakeWhile(p =>
+                    p.Timestamp - firstTimestamp <= WINDOW_MICROSECONDS
+                ),
             ];
 
             foreach (Packet packet in group)
