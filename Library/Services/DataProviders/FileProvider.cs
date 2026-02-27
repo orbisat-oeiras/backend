@@ -71,7 +71,7 @@ namespace backend.Library.Services.DataProcessors.Analyzers
                         DeviceId.HumiditySensor => SerialProvider.DataLabel.Humidity,
                         DeviceId.System => SerialProvider.DataLabel.System,
                         DeviceId.Unknown => SerialProvider.DataLabel.Unknown,
-                        DeviceId.GPS => SerialProvider.DataLabel.GPSData,
+                        DeviceId.Gps => SerialProvider.DataLabel.GPSData,
                         DeviceId.Accelerometer => SerialProvider.DataLabel.AccelerationData,
                         _ => throw new NotImplementedException(),
                     };
