@@ -40,14 +40,13 @@ namespace backend.Library.Services.DataProviders
             Mission4,
             Latitude,
             Longitude,
-            Altitude,
             GPSData,
             AccelerationData,
             Timestamp,
             Unknown,
         }
 
-private FileStream? _fs;
+        private FileStream? _fs;
         public event Action<EventData<Dictionary<DataLabel, byte[]>>>? OnDataProvided;
 
         // Logger provided by DI, used for printing information to all logging providers at once
