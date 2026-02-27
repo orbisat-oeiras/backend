@@ -479,7 +479,8 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-# Csv data files
+# .csv and RAW data files
 Server/Data/
+Server/RawData/
 
 .idea/
