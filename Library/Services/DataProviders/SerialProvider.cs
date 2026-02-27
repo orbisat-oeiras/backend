@@ -36,6 +36,7 @@ namespace backend.Library.Services.DataProviders
             Unknown,
         }
 
+private FileStream? _fs;
         public event Action<EventData<Dictionary<DataLabel, byte[]>>>? OnDataProvided;
 
         // Logger provided by DI, used for printing information to all logging providers at once
@@ -46,6 +47,10 @@ namespace backend.Library.Services.DataProviders
         private bool _isProcessing;
         private readonly PacketBuffer _packetBuffer = new();
         private readonly Dictionary<DataLabel, byte[]> _currentData;
+        private readonly string directory,
+            fileName,
+            filePath;
+        private readonly IServiceProvider _serviceProvider;
 
         private readonly System.Timers.Timer _timer;
 
@@ -80,10 +85,22 @@ namespace backend.Library.Services.DataProviders
             // Open the port
             _serialPort.Open();
 
+            directory = "RawData";
+            fileName = $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}-RAW.raw";
+            filePath = Path.Combine(directory, fileName);
+            Directory.CreateDirectory(directory);
             // Set up event listeners
-            _timer = new System.Timers.Timer(200) { AutoReset = true };
-            _timer.Elapsed += ReceiveAndSendData;
+            _timer = new System.Timers.Timer(10) { AutoReset = true };
+            _timer.Elapsed += CheckForIncomingData;
             _timer.Start();
+        }
+
+        private void CheckForIncomingData(object? sender, System.Timers.ElapsedEventArgs e)
+        {
+            if (_serialPort.BytesToRead != 0)
+            {
+                ReceiveAndSendData(sender, e);
+            }
         }
 
         /// <summary>
@@ -106,12 +123,15 @@ namespace backend.Library.Services.DataProviders
                 _logger.LogInformation("Receiving...");
 
                 int byteNumber = _serialPort.BytesToRead;
-                if (byteNumber != 0)
+                byte[] byteBuffer = new byte[byteNumber];
+                _serialPort.Read(byteBuffer, 0, byteNumber);
+                using (_fs = new FileStream(filePath, FileMode.Append, FileAccess.Write))
                 {
-                    byte[] byteBuffer = new byte[byteNumber];
-                    _serialPort.Read(byteBuffer, 0, byteNumber);
-                    _packetBuffer.Add(byteBuffer);
+                    _fs.Write(byteBuffer, 0, byteBuffer.Length);
+                    _fs.Flush();
                 }
+
+                _packetBuffer.Add(byteBuffer);
 
                 bool newDataArrived = false;
                 byte[]? extractedPacket;
@@ -119,10 +139,10 @@ namespace backend.Library.Services.DataProviders
                 // Use the same approach I used in testing
                 while ((extractedPacket = _packetBuffer.ExtractFirstValidPacket()) != null)
                 {
-                    _logger.LogInformation(
-                        "Extracted packet: {packet}",
-                        BitConverter.ToString([.. extractedPacket.Skip(2)]).Replace("-", " ")
-                    );
+                    // _logger.LogInformation(
+                    //     "Extracted packet: {packet}",
+                    //     BitConverter.ToString([.. extractedPacket.Skip(2)]).Replace("-", " ")
+                    // );
                     Packet? packet = Decode.GetPacketInformation(extractedPacket);
 
                     if (packet == null || packet.Payload?.Value == null)
