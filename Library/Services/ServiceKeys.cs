@@ -14,5 +14,6 @@
         AccelerationYExtractor,
         AccelerationZExtractor,
         SerialSender,
+        TimeSyncService,
     }
 }

@@ -71,23 +71,6 @@ namespace backend
                 }
                 Environment.Exit(0); // Exit Code 0 (ERROR_SUCCESS) - error here doesn't actually mean failure
             }
-            if (args.Length != 0 && args[0] == "--tc-mode")
-            {
-                Console.WriteLine("Please select the serial port where the antenna is connected.");
-                string antennaPort = PromptPortName();
-                Console.WriteLine($"Selected port for antenna: {antennaPort}");
-
-                builder.Services.AddKeyedSingleton<ISerialSender, SerialSender>(
-                    ServiceKeys.SerialSender,
-                    (serviceProvider, _) =>
-                        ActivatorUtilities.CreateInstance<SerialSender>(
-                            serviceProvider,
-                            antennaPort,
-                            19200,
-                            Parity.None
-                        )
-                );
-            }
             // Get the name of the serial port where data is arriving
             string serialPortName = PromptPortName();
             Console.WriteLine($"Selected port: {serialPortName}");
@@ -102,12 +85,8 @@ namespace backend
             }
             else
             {
-                builder.Services.AddKeyedSingleton<
-                    IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>,
-                    SerialProvider
-                >(
-                    ServiceKeys.DataProvider,
-                    (serviceProvider, _) =>
+                builder.Services.AddSingleton(
+                    (serviceProvider) =>
                         ActivatorUtilities.CreateInstance<SerialProvider>(
                             serviceProvider,
                             serialPortName,
@@ -115,7 +94,18 @@ namespace backend
                             Parity.None
                         )
                 );
+                builder.Services.AddKeyedSingleton<
+                    IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>
+                >(
+                    ServiceKeys.DataProvider,
+                    (serviceProvider, _) => serviceProvider.GetRequiredService<SerialProvider>()
+                );
+                builder.Services.AddKeyedSingleton<IPacketSender>(
+                    ServiceKeys.SerialSender,
+                    (serviceProvider, _) => serviceProvider.GetRequiredService<SerialProvider>()
+                );
             }
+            builder.Services.AddSingleton<TimeSyncService>();
             SubscribeToFinalizers(builder);
             // This will register all classes annotated with ApiController
             builder.Services.AddControllers();

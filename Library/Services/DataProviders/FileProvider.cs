@@ -71,7 +71,7 @@ namespace backend.Library.Services.DataProcessors.Analyzers
                         DeviceId.HumiditySensor => SerialProvider.DataLabel.Humidity,
                         DeviceId.System => SerialProvider.DataLabel.System,
                         DeviceId.Unknown => SerialProvider.DataLabel.Unknown,
-                        DeviceId.Gps => SerialProvider.DataLabel.GPSData,
+                        DeviceId.Gps => SerialProvider.DataLabel.Gps,
                         DeviceId.Accelerometer => SerialProvider.DataLabel.AccelerationData,
                         _ => throw new NotImplementedException(),
                     };
@@ -83,19 +83,19 @@ namespace backend.Library.Services.DataProcessors.Analyzers
                 GPSCoords coords = new()
                 {
                     Latitude = _currentData.TryGetValue(
-                        SerialProvider.DataLabel.GPSData,
+                        SerialProvider.DataLabel.Gps,
                         out byte[]? latBytes
                     )
                         ? BitConverter.ToDouble(latBytes, 0)
                         : double.NaN,
                     Longitude = _currentData.TryGetValue(
-                        SerialProvider.DataLabel.GPSData,
+                        SerialProvider.DataLabel.Gps,
                         out byte[]? lonBytes
                     )
                         ? BitConverter.ToDouble(lonBytes, 8)
                         : double.NaN,
                     Altitude = _currentData.TryGetValue(
-                        SerialProvider.DataLabel.GPSData,
+                        SerialProvider.DataLabel.Gps,
                         out byte[]? altitudeBytes
                     )
                         ? BitConverter.ToSingle(altitudeBytes, 16)

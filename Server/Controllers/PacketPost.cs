@@ -1,8 +1,9 @@
 using System.Text;
-using backend.Library.Extensions;
 using backend.Library.Services;
+using backend.Library.Services.DataProviders;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
+using Orbipacket;
 using Orbipacket.Library;
 
 namespace backend.Server.Controllers
@@ -16,23 +17,36 @@ namespace backend.Server.Controllers
 
         private readonly IServiceProvider _serviceProvider;
 
-        public PacketPost(ILogger<PacketPost> logger, IServiceProvider serviceProvider)
+        private readonly TimeSyncService _timeSyncService;
+
+        public PacketPost(
+            ILogger<PacketPost> logger,
+            IServiceProvider serviceProvider,
+            TimeSyncService timeSyncService
+        )
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
+            _timeSyncService = timeSyncService;
         }
 
         [HttpPost]
-        public ActionResult<Orbipacket.Packet> PostPacket(Orbipacket.Packet packet)
+        public ActionResult<Packet> PostPacket(Packet packet)
         {
-            ISerialSender? _serialSender = _serviceProvider.GetKeyedService<ISerialSender>(
+            IPacketSender? _serialSender = _serviceProvider.GetKeyedService<IPacketSender>(
                 ServiceKeys.SerialSender
             );
-            _logger.LogInformation(
-                "Received packet with ID: {packetId} at {time} with data {data}, as type {type}",
+
+            if (packet.DeviceId == DeviceId.TimeSync)
+            {
+                _timeSyncService.BeginSync();
+                return Ok("Time synchronization started...");
+            }
+
+            Packet packetWithAdjustedTimestamp = new(
                 packet.DeviceId,
-                packet.Timestamp,
-                Encoding.ASCII.GetString(packet.Payload.Value),
+                (ulong)((long)packet.Timestamp + _timeSyncService.Offset),
+                packet.Payload,
                 packet.Type
             );
 
@@ -41,13 +55,29 @@ namespace backend.Server.Controllers
                 _logger.LogError("ISerialSender service is not available.");
                 return StatusCode(500, "ISerialSender service is not available.");
             }
-            byte[] encodedData = Encode.EncodePacket(packet);
+            byte[] encodedData;
+            try
+            {
+                encodedData = Encode.EncodePacket(packetWithAdjustedTimestamp);
+            }
+            catch (Exception)
+            {
+                _logger.LogError("Timestamp size overflow, sync CanSat time.");
+                return StatusCode(400, "Timestamp size overflow, sync CanSat time.");
+            }
             _serialSender.SendPacket(encodedData);
+            // _logger.LogInformation(
+            //     "Encoded packet data: {encodedData}",
+            //     BitConverter.ToString(encodedData)
+            // );
             _logger.LogInformation(
-                "Encoded packet data: {encodedData}",
-                BitConverter.ToString(encodedData)
+                "Sent packet with ID: {packetId} with CanSatTimestamp {time} with data {data}, as type {type}",
+                packetWithAdjustedTimestamp.DeviceId,
+                packetWithAdjustedTimestamp.Timestamp,
+                Encoding.ASCII.GetString(packetWithAdjustedTimestamp.Payload.Value),
+                packetWithAdjustedTimestamp.Type
             );
-            return Ok(packet);
+            return Ok(packetWithAdjustedTimestamp);
         }
     }
 }

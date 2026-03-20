@@ -1,8 +1,10 @@
-﻿using System.Globalization;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.IO.Ports;
 using System.Text;
 using backend.Library.Models;
 using backend.Library.Services.DataProcessors;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Orbipacket;
 
@@ -13,7 +15,8 @@ namespace backend.Library.Services.DataProviders
     /// </summary>
     public sealed class SerialProvider
         : IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>,
-            IDisposable
+            IDisposable,
+            IPacketSender
     {
         /// <summary>
         /// Represent the index of each data piece in the list provided by a SerialProvider.
@@ -40,7 +43,6 @@ namespace backend.Library.Services.DataProviders
             Mission4,
             Latitude,
             Longitude,
-            GPSData,
             AccelerationData,
             Timestamp,
             Unknown,
@@ -75,11 +77,13 @@ namespace backend.Library.Services.DataProviders
             string portName,
             int baudRate,
             Parity parity,
-            ILogger<SerialProvider> logger
+            ILogger<SerialProvider> logger,
+            IServiceProvider serviceProvider
         )
         {
             _logger = logger;
             _currentData = [];
+            _serviceProvider = serviceProvider;
             // Note that more options are available for configuring a SerialPort,
             // namely data bits, stop bits and handshake. I have no idea what those
             // are, and am very likely to ever change them in the radio modules
@@ -91,6 +95,7 @@ namespace backend.Library.Services.DataProviders
                 // I have no clue what a reasonable value for this is
                 ReadTimeout = 400,
                 WriteTimeout = 400,
+                ReceivedBytesThreshold = 1,
             };
             // Open the port
             _serialPort.Open();
@@ -192,6 +197,7 @@ namespace backend.Library.Services.DataProviders
                             DeviceId.Unknown => DataLabel.Unknown,
                             DeviceId.Gps => DataLabel.Gps,
                             DeviceId.Accelerometer => DataLabel.AccelerationData,
+                            DeviceId.TimeSync => DataLabel.TimeSync,
                             _ => throw new NotImplementedException(),
                         };
                         _currentData[label] = packet.Payload.Value;
@@ -222,22 +228,26 @@ namespace backend.Library.Services.DataProviders
 
                     GPSCoords coords = new()
                     {
-                        Latitude = _currentData.TryGetValue(DataLabel.GPSData, out byte[]? latBytes)
+                        Latitude = _currentData.TryGetValue(DataLabel.Gps, out byte[]? latBytes)
                             ? BitConverter.ToDouble(latBytes, 0)
                             : double.NaN,
-                        Longitude = _currentData.TryGetValue(
-                            DataLabel.GPSData,
-                            out byte[]? lonBytes
-                        )
+                        Longitude = _currentData.TryGetValue(DataLabel.Gps, out byte[]? lonBytes)
                             ? BitConverter.ToDouble(lonBytes, 8)
                             : double.NaN,
                         Altitude = _currentData.TryGetValue(
-                            SerialProvider.DataLabel.GPSData,
+                            DataLabel.Gps,
                             out byte[]? altitudeBytes
                         )
                             ? BitConverter.ToSingle(altitudeBytes, 16)
                             : float.NaN,
                     };
+
+                    TimeSyncService? timeSyncService =
+                        _serviceProvider?.GetService<TimeSyncService>();
+
+                    long offsetToApply = timeSyncService?.Offset ?? 0;
+
+                    ulong syncedTimestamp = (ulong)((long)timestamp - offsetToApply);
 
                     _logger.LogInformation(
                         "GPS Data: {coords}",
@@ -265,12 +275,40 @@ namespace backend.Library.Services.DataProviders
             }
         }
 
+        public void SendPacket(byte[] packetData)
+        {
+            if (!_serialPort.IsOpen)
+            {
+                _logger.LogWarning("Serial port is not open. Cannot send packet.");
+                return;
+            }
+
+            try
+            {
+                _serialPort.Write(packetData, 0, packetData.Length);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send packet over serial port.");
+            }
+        }
+
         public void Dispose()
         {
             // Close the serial port so it can be used by other apps
             _serialPort.Close();
-            _timer.Stop();
-            _timer.Dispose();
         }
+    }
+
+    /// <summary>
+    /// Interface for sending packets over a serial connection.
+    /// </summary>
+    public interface IPacketSender
+    {
+        /// <summary>
+        /// Sends a packet over the selected serial port.
+        /// </summary>
+        /// <param name="packetData">The encoded packet data.</param>
+        void SendPacket(byte[] packetData);
     }
 }
