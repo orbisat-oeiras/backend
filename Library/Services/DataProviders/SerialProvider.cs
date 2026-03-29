@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Globalization;
+using System.IO;
 using System.IO.Ports;
 using System.Text;
 using backend.Library.Models;
@@ -102,7 +103,7 @@ namespace backend.Library.Services.DataProviders
 
             directory = "RawData";
             fileName = $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}-RAW.raw";
-            filePath = Path.Combine(directory, fileName);
+            filePath = Path.GetFullPath(Path.Combine(directory, fileName));
             Directory.CreateDirectory(directory);
             // Set up event listeners
             _timer = new System.Timers.Timer(10) { AutoReset = true };
@@ -135,17 +136,20 @@ namespace backend.Library.Services.DataProviders
 
                 _isProcessing = true;
                 _timer.Stop();
-                _logger.LogInformation("Receiving...");
 
                 int byteNumber = _serialPort.BytesToRead;
                 byte[] byteBuffer = new byte[byteNumber];
                 _serialPort.Read(byteBuffer, 0, byteNumber);
-                using (_fs = new FileStream(filePath, FileMode.Append, FileAccess.Write))
+                try
                 {
-                    _fs.Write(byteBuffer, 0, byteBuffer.Length);
-                    _fs.Flush();
+                    File.AppendAllBytes(filePath, byteBuffer);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Write error");
                 }
 
+                _logger.LogInformation("Data arrived: " + BitConverter.ToString(byteBuffer));
                 _packetBuffer.Add(byteBuffer);
 
                 bool newDataArrived = false;
@@ -167,6 +171,9 @@ namespace backend.Library.Services.DataProviders
                     else
                     {
                         packetResync.AddPacket(packet);
+                        _logger.LogInformation(
+                            "Packet raw: " + BitConverter.ToString(extractedPacket)
+                        );
                         newDataArrived = true;
                     }
                 }
@@ -208,7 +215,7 @@ namespace backend.Library.Services.DataProviders
                         {
                             _logger.LogInformation(
                                 "System data: {data}",
-                                Encoding.ASCII.GetString(packet.Payload.Value)
+                                BitConverter.ToString(packet.Payload.Value)
                             );
                         }
                         else
