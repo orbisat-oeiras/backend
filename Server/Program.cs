@@ -104,8 +104,9 @@ namespace backend
                     ServiceKeys.SerialSender,
                     (serviceProvider, _) => serviceProvider.GetRequiredService<SerialProvider>()
                 );
+
+                builder.Services.AddSingleton<TimeSyncService>();
             }
-            builder.Services.AddSingleton<TimeSyncService>();
             SubscribeToFinalizers(builder);
             // This will register all classes annotated with ApiController
             builder.Services.AddControllers();
