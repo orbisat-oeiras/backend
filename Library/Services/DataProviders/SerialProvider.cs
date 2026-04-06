@@ -56,13 +56,13 @@ namespace backend.Library.Services.DataProviders
         private readonly ILogger<SerialProvider> _logger;
         private readonly SerialPort _serialPort;
         private readonly PacketResync packetResync = new();
-        private readonly object _lock = new();
         private bool _isProcessing;
         private readonly PacketBuffer _packetBuffer = new();
         private readonly Dictionary<DataLabel, byte[]> _currentData;
         private readonly string directory,
             fileName,
             filePath;
+        private long offsetToApply = 0;
         private readonly IServiceProvider _serviceProvider;
 
         private readonly System.Timers.Timer _timer;
@@ -252,7 +252,7 @@ namespace backend.Library.Services.DataProviders
                     TimeSyncService? timeSyncService =
                         _serviceProvider?.GetService<TimeSyncService>();
 
-                    long offsetToApply = timeSyncService?.Offset ?? 0;
+                    offsetToApply = timeSyncService?.Offset ?? 0;
 
                     ulong syncedTimestamp = (ulong)((long)timestamp - offsetToApply);
 
@@ -266,6 +266,7 @@ namespace backend.Library.Services.DataProviders
                         {
                             DataStamp = new DataStamp
                             {
+                                Offset = offsetToApply,
                                 Timestamp = timestamp,
                                 Coordinates = coords,
                             },
