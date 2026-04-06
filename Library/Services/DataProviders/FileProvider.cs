@@ -14,6 +14,8 @@ namespace backend.Library.Services.DataProcessors.Analyzers
             EventData<Dictionary<SerialProvider.DataLabel, byte[]>>
         >? OnDataProvided;
 
+        private long offset = 0;
+
         private readonly PacketResync _packetResync = new();
         private readonly PacketBuffer _packetBuffer = new();
         private readonly Dictionary<SerialProvider.DataLabel, byte[]> _currentData = [];
@@ -42,6 +44,15 @@ namespace backend.Library.Services.DataProcessors.Analyzers
                 {
                     Console.WriteLine("Warning: Invalid or corrupted packet.");
                     continue;
+                }
+                if (packet.DeviceId == DeviceId.TimeSync)
+                {
+                    ulong t0 = BitConverter.ToUInt64(packet.Payload.Value, 0);
+                    ulong t2 = BitConverter.ToUInt64(packet.Payload.Value, 16);
+
+                    // Here we can't exactly replicate the last t3, so I'm going to consider the
+                    // offset as simply t2 - t0
+                    offset = (long)(t2 - t0);
                 }
                 else
                 {
@@ -102,10 +113,17 @@ namespace backend.Library.Services.DataProcessors.Analyzers
                         : float.NaN,
                 };
 
+                timestamp = (ulong)((long)timestamp + offset);
+
                 OnDataProvided?.Invoke(
                     new EventData<Dictionary<SerialProvider.DataLabel, byte[]>>
                     {
-                        DataStamp = new DataStamp { Timestamp = timestamp, Coordinates = coords },
+                        DataStamp = new DataStamp
+                        {
+                            Offset = offset,
+                            Timestamp = timestamp,
+                            Coordinates = coords,
+                        },
                         Data = _currentData,
                     }
                 );
