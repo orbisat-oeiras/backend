@@ -13,7 +13,7 @@ namespace backend.Server.Controllers
         private readonly IEnumerable<IFinalizedProvider> _eventFinalizers;
 
         private string? _currentTimestamp = null;
-        private readonly string[] _data = new string[10];
+        private readonly string[] _data = new string[11];
         private StreamWriter? _sw;
         private readonly object _lock = new();
 
@@ -40,7 +40,7 @@ namespace backend.Server.Controllers
                 using (_sw = new StreamWriter(filePath, true))
                 {
                     await _sw.WriteLineAsync(
-                        "pressure,temperature,altitude,humidity,latitude,longitude,altitudegps,velocity,altitudedelta,timestamp"
+                        "pressure,temperature,altitude,humidity,latitude,longitude,altitudegps,velocity,altitudedelta,timestamp,offset"
                     );
                     await _sw.FlushAsync();
 
@@ -146,7 +146,8 @@ namespace backend.Server.Controllers
                         : payload.DataStamp.Coordinates.Altitude.ToString(
                             CultureInfo.InvariantCulture
                         );
-                    _data[9] = payload.DataStamp.Timestamp.ToString();
+                    _data[9] = payload.DataStamp.Timestamp.ToString(CultureInfo.InvariantCulture);
+                    _data[10] = payload.DataStamp.Offset.ToString(CultureInfo.InvariantCulture);
                 }
 
                 if (lineWritten)
