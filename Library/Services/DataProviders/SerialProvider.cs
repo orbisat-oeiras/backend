@@ -49,7 +49,6 @@ namespace backend.Library.Services.DataProviders
             Unknown,
         }
 
-        private FileStream? _fs;
         public event Action<EventData<Dictionary<DataLabel, byte[]>>>? OnDataProvided;
 
         // Logger provided by DI, used for printing information to all logging providers at once
@@ -253,8 +252,6 @@ namespace backend.Library.Services.DataProviders
                         _serviceProvider?.GetService<TimeSyncService>();
 
                     offsetToApply = timeSyncService?.Offset ?? 0;
-
-                    ulong syncedTimestamp = (ulong)((long)timestamp - offsetToApply);
 
                     _logger.LogInformation(
                         "GPS Data: {coords}",

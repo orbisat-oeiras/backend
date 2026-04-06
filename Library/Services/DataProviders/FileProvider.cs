@@ -113,8 +113,6 @@ namespace backend.Library.Services.DataProcessors.Analyzers
                         : float.NaN,
                 };
 
-                timestamp = (ulong)((long)timestamp + offset);
-
                 OnDataProvided?.Invoke(
                     new EventData<Dictionary<SerialProvider.DataLabel, byte[]>>
                     {
