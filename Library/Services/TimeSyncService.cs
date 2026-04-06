@@ -69,7 +69,6 @@ namespace backend.Library.Services
         {
             foreach (KeyValuePair<SerialProvider.DataLabel, byte[]> keyValue in incomingData.Data)
             {
-                _logger.LogInformation("Received packet with label " + keyValue.Key);
                 if (keyValue.Key == SerialProvider.DataLabel.TimeSync)
                 {
                     _logger.LogInformation("Calculating offset...");
