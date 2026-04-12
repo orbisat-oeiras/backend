@@ -1,3 +1,4 @@
+using System.Text;
 using backend.Library.Models;
 using backend.Library.Services.DataProviders;
 using Orbipacket;
@@ -15,10 +16,21 @@ namespace backend.Library.Services.DataProcessors.Analyzers
         >? OnDataProvided;
 
         private long offset = 0;
-
+        string directory,
+            fileName,
+            filePath;
         private readonly PacketResync _packetResync = new();
         private readonly PacketBuffer _packetBuffer = new();
         private readonly Dictionary<SerialProvider.DataLabel, byte[]> _currentData = [];
+
+        public FileProvider()
+        {
+            directory = "SystemMessages";
+            fileName = $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}-RAW.txt";
+
+            filePath = Path.GetFullPath(Path.Combine(directory, fileName));
+            Directory.CreateDirectory(directory);
+        }
 
         /// <summary>
         /// Analyse the contents of a binary file and extract packets.
@@ -53,6 +65,15 @@ namespace backend.Library.Services.DataProcessors.Analyzers
                     // Here we can't exactly replicate the last t3, so I'm going to consider the
                     // offset as simply t2 - t0
                     offset = (long)(t2 - t0);
+                }
+                if (packet.DeviceId == DeviceId.System)
+                {
+                    string payloadString = Encoding.UTF8.GetString(packet.Payload.Value);
+                    Console.WriteLine("System data: " + payloadString);
+                    File.AppendAllText(
+                        filePath,
+                        $"Packet number {packetNumber}: {payloadString} \n"
+                    );
                 }
                 else
                 {
