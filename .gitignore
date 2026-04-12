@@ -482,5 +482,6 @@ $RECYCLE.BIN/
 # .csv and RAW data files
 Server/Data/
 Server/RawData/
+Server/SystemMessages/
 
 .idea/
