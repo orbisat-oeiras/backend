@@ -4,7 +4,7 @@ namespace backend.Library.Services.DataProcessors
 {
     internal class PacketResync
     {
-        private const ulong WINDOW_MICROSECONDS = 100_000; // 100 microseconds window
+        private const ulong WINDOW_MICROSECONDS = 100_000; // 100 milliseconds window
         private const ulong STALE_THRESHOLD_MICROSECONDS = 1_000_000; // 1.0 seconds
         private readonly List<Packet> _resyncBuffer = [];
 
@@ -23,6 +23,7 @@ namespace backend.Library.Services.DataProcessors
                 // Console.WriteLine("Current Timestamp:" + currentTimestamp);
                 // Console.WriteLine("Packet Timestamp:" + packet.Timestamp);
                 _currentTimestamp = packet.Timestamp;
+                _resyncBuffer.Clear();
                 return;
             }
             _resyncBuffer.Add(packet);
