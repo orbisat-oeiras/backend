@@ -59,12 +59,16 @@ namespace backend.Library.Services.DataProcessors.Analyzers
                 }
                 if (packet.DeviceId == DeviceId.TimeSync)
                 {
+                    Console.WriteLine(
+                        "Packet number " + packetNumber + " with TimeSync DeviceId found."
+                    );
                     ulong t0 = BitConverter.ToUInt64(packet.Payload.Value, 0);
                     ulong t2 = BitConverter.ToUInt64(packet.Payload.Value, 16);
 
                     // Here we can't exactly replicate the last t3, so I'm going to consider the
                     // offset as simply t2 - t0
                     offset = (long)(t2 - t0);
+                    Console.WriteLine("Offset calculated: " + offset);
                 }
                 if (packet.DeviceId == DeviceId.System)
                 {
@@ -75,10 +79,8 @@ namespace backend.Library.Services.DataProcessors.Analyzers
                         $"Packet number {packetNumber}: {payloadString} \n"
                     );
                 }
-                else
-                {
-                    _packetResync.AddPacket(packet);
-                }
+                _packetResync.AddPacket(packet);
+
                 // Console.WriteLine(
                 //     "Packet DeviceId: {0}, Timestamp: {1}, Payload Length: {2}",
                 //     packet.DeviceId,
