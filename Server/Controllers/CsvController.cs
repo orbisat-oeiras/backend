@@ -152,7 +152,7 @@ namespace backend.Server.Controllers
 
                 if (lineWritten)
                 {
-                    _logger.LogInformation("Wrote data row for timestamp {ts}", _currentTimestamp);
+                    // _logger.LogInformation("Wrote data row for timestamp {ts}", _currentTimestamp);
                 }
             }
             catch (ObjectDisposedException)

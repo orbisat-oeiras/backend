@@ -39,7 +39,14 @@ namespace backend.Server.Controllers
 
             if (packet.DeviceId == DeviceId.TimeSync)
             {
-                _timeSyncService.BeginSync();
+                try
+                {
+                    _timeSyncService.BeginSync();
+                }
+                catch (TimeoutException)
+                {
+                    _logger.LogError("Time Sync attempt timed out.");
+                }
                 return Ok("Time synchronization started...");
             }
             else

@@ -105,7 +105,7 @@ namespace backend.Library.Services.DataProviders
             filePath = Path.GetFullPath(Path.Combine(directory, fileName));
             Directory.CreateDirectory(directory);
             // Set up event listeners
-            _timer = new System.Timers.Timer(10) { AutoReset = true };
+            _timer = new System.Timers.Timer(500) { AutoReset = true };
             _timer.Elapsed += CheckForIncomingData;
             _timer.Start();
         }
@@ -148,7 +148,7 @@ namespace backend.Library.Services.DataProviders
                     _logger.LogError(ex, "Write error");
                 }
 
-                _logger.LogInformation("Data arrived: " + BitConverter.ToString(byteBuffer));
+                // _logger.LogInformation("Data arrived: " + BitConverter.ToString(byteBuffer));
                 _packetBuffer.Add(byteBuffer);
 
                 bool newDataArrived = false;
@@ -169,11 +169,18 @@ namespace backend.Library.Services.DataProviders
                     }
                     else
                     {
-                        packetResync.AddPacket(packet);
+                        bool addedpacket = packetResync.AddPacket(packet);
+                        // _logger.LogInformation(
+                        // "Packet raw: " + BitConverter.ToString(extractedPacket)
+                        // );
+                        newDataArrived = addedpacket;
                         _logger.LogInformation(
-                            "Packet raw: " + BitConverter.ToString(extractedPacket)
+                            "{label} data: {data}",
+                            packet.DeviceId,
+                            BitConverter
+                                .ToSingle(packet.Payload.Value, 0)
+                                .ToString(CultureInfo.InvariantCulture)
                         );
-                        newDataArrived = true;
                     }
                 }
                 if (!newDataArrived)
@@ -183,7 +190,7 @@ namespace backend.Library.Services.DataProviders
                 else
                 {
                     List<Packet>? list;
-                    _logger.LogInformation("Getting next group of packets...");
+                    // _logger.LogInformation("Getting next group of packets...");
                     list = packetResync.GetNextGroup();
 
                     if (list == null)
@@ -253,10 +260,10 @@ namespace backend.Library.Services.DataProviders
 
                     offsetToApply = timeSyncService?.Offset ?? 0;
 
-                    _logger.LogInformation(
-                        "GPS Data: {coords}",
-                        coords.Latitude + ", " + coords.Longitude
-                    );
+                    // _logger.LogInformation(
+                    //     "GPS Data: {coords}",
+                    //     coords.Latitude + ", " + coords.Longitude
+                    // );
 
                     OnDataProvided?.Invoke(
                         new EventData<Dictionary<DataLabel, byte[]>>

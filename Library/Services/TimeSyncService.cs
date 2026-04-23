@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using backend.Library.Models;
 using backend.Library.Services.DataProcessors.DataExtractors;
@@ -12,6 +13,7 @@ namespace backend.Library.Services
     public class TimeSyncService
     {
         private readonly ILogger<TimeSyncService> _logger;
+        private readonly Stopwatch _timer;
         private ulong t0;
         private ulong t1,
             t2,
@@ -35,6 +37,7 @@ namespace backend.Library.Services
                 IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>> dataProvider
         )
         {
+            _timer = new();
             _logger = logger;
             _serialSender = serialSender;
             dataProvider.OnDataProvided += HandleIncomingData;
@@ -42,12 +45,14 @@ namespace backend.Library.Services
 
         public void BeginSync()
         {
+            _timer.Reset();
+            _timer.Start();
             _logger.LogInformation("Beginning sync...");
 
             t0 = (ulong)((DateTime.UtcNow.Ticks - DateTime.UnixEpoch.Ticks) / 10);
             // This comes in 100-nanosecond interval, div by 10 is microseconds
             // also for some weird ahh reason utcnow is the time since 00:00:00 01-01-0000 instead of epoch
-            // that's why we subtract datetime.unixepoch.ticks (which is just the amount of 100-nanosecond interval from utcnow to unixepoch,
+            // that's why we subtract DateTime.UnixEpoch.Ticks (which is just the amount of 100-nanosecond interval from utcnow to unixepoch,
             // it's a constant variable)
 
             Packet syncRequest = new(
@@ -58,8 +63,14 @@ namespace backend.Library.Services
             );
 
             byte[] packet = Encode.EncodePacket(syncRequest);
-
-            _serialSender.SendPacket(packet);
+            try
+            {
+                _serialSender.SendPacket(packet);
+            }
+            catch (TimeoutException)
+            {
+                throw new TimeoutException();
+            }
             _logger.LogInformation("Packet Sent!");
         }
 
@@ -90,6 +101,11 @@ namespace backend.Library.Services
                         $"Clock offset calculated: {_offset}, with CanSat t1 = {t1} and t2 = {t2} and local t3 = {t3}"
                     );
                 }
+            }
+            if (_timer.ElapsedMilliseconds >= 5000)
+            {
+                _timer.Reset();
+                throw new TimeoutException();
             }
         }
     }
