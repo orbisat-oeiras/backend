@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Text;
 using backend.Library.Models;
 using backend.Library.Services.DataProviders;
@@ -16,6 +17,8 @@ namespace backend.Library.Services.DataProcessors.Analyzers
         >? OnDataProvided;
 
         private long offset = 0;
+        private ulong t0,
+            t2;
         string directory,
             fileName,
             filePath;
@@ -62,9 +65,15 @@ namespace backend.Library.Services.DataProcessors.Analyzers
                     Console.WriteLine(
                         "Packet number " + packetNumber + " with TimeSync DeviceId found."
                     );
-                    ulong t0 = BitConverter.ToUInt64(packet.Payload.Value, 0);
-                    ulong t2 = BitConverter.ToUInt64(packet.Payload.Value, 16);
-
+                    try
+                    {
+                        t0 = BitConverter.ToUInt64(packet.Payload.Value, 0);
+                        t2 = BitConverter.ToUInt64(packet.Payload.Value, 16);
+                    }
+                    catch (System.ArgumentOutOfRangeException)
+                    {
+                        Console.WriteLine("Error calculating the offset.");
+                    }
                     // Here we can't exactly replicate the last t3, so I'm going to consider the
                     // offset as simply t2 - t0
                     offset = (long)(t2 - t0);
@@ -107,7 +116,7 @@ namespace backend.Library.Services.DataProcessors.Analyzers
                         DeviceId.Unknown => SerialProvider.DataLabel.Unknown,
                         DeviceId.Gps => SerialProvider.DataLabel.Gps,
                         DeviceId.Accelerometer => SerialProvider.DataLabel.AccelerationData,
-                        _ => throw new NotImplementedException(),
+                        _ => SerialProvider.DataLabel.Unknown,
                     };
                     _currentData[label] = packet.Payload.Value ?? BitConverter.GetBytes(float.NaN);
                 }
