@@ -19,7 +19,7 @@ namespace backend.Library.Services.DataProcessors.Analyzers
         private long offset = 0;
         private ulong t0,
             t2;
-        string directory,
+        private readonly string directory,
             fileName,
             filePath;
         private readonly PacketResync _packetResync = new();
@@ -103,7 +103,7 @@ namespace backend.Library.Services.DataProcessors.Analyzers
             List<Packet>? list;
             Console.WriteLine("Getting next group of packets...");
 
-            while ((list = _packetResync.GetNextGroup()).Count > 0)
+            while ((list = _packetResync.GetNextGroup()) != null && list.Count > 0)
             {
                 foreach (Packet packet in list)
                 {
