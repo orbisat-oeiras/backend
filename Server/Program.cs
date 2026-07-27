@@ -85,12 +85,8 @@ namespace backend
             }
             else
             {
-                builder.Services.AddKeyedSingleton<
-                    IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>,
-                    SerialProvider
-                >(
-                    ServiceKeys.DataProvider,
-                    (serviceProvider, _) =>
+                builder.Services.AddSingleton(
+                    (serviceProvider) =>
                         ActivatorUtilities.CreateInstance<SerialProvider>(
                             serviceProvider,
                             serialPortName,
@@ -98,6 +94,18 @@ namespace backend
                             Parity.None
                         )
                 );
+                builder.Services.AddKeyedSingleton<
+                    IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>
+                >(
+                    ServiceKeys.DataProvider,
+                    (serviceProvider, _) => serviceProvider.GetRequiredService<SerialProvider>()
+                );
+                builder.Services.AddKeyedSingleton<IPacketSender>(
+                    ServiceKeys.SerialSender,
+                    (serviceProvider, _) => serviceProvider.GetRequiredService<SerialProvider>()
+                );
+
+                builder.Services.AddSingleton<TimeSyncService>();
             }
             SubscribeToFinalizers(builder);
             // This will register all classes annotated with ApiController
