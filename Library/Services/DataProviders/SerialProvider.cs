@@ -214,6 +214,7 @@ namespace backend.Library.Services.DataProviders
                     DeviceId.Accelerometer => DataLabel.AccelerationData,
                     DeviceId.TimeSync => DataLabel.TimeSync,
                     DeviceId.Camera => DataLabel.Camera,
+                    DeviceId.Mission1 => DataLabel.Mission1,
                     _ => throw new NotImplementedException(),
                 };
                 _currentData[label] = packet.Payload.Value;
@@ -225,6 +226,16 @@ namespace backend.Library.Services.DataProviders
                     _logger.LogInformation(
                         "System data: {data}",
                         BitConverter.ToString(packet.Payload.Value)
+                    );
+                }
+                if (label == DataLabel.AccelerationData)
+                {
+                    float accelx = BitConverter.ToSingle(packet.Payload.Value, 0);
+                    float accely = BitConverter.ToSingle(packet.Payload.Value, 4);
+                    float accelz = BitConverter.ToSingle(packet.Payload.Value, 8);
+                    _logger.LogInformation(
+                        "Accel: {value}",
+                        Math.Sqrt(accelx * accelx + accely * accely + accelz * accelz)
                     );
                 }
                 else
