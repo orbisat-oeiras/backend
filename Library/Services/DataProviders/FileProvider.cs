@@ -45,21 +45,20 @@ namespace backend.Library.Services.DataProcessors.Analyzers
             byte[] fileBytes = File.ReadAllBytes(filepath);
 
             _packetBuffer.Add(fileBytes);
-            // Console.WriteLine("Analysing bytes from {0} to {1}", i, i + byteWindow);
             byte[]? extractedPacket;
 
             while ((extractedPacket = _packetBuffer.ExtractFirstValidPacket()) != null)
             {
                 if (packetNumber % 100 == 0)
-                {
                     Console.WriteLine("Processing packet number: {0}", packetNumber);
-                }
+
                 Packet? packet = Decode.GetPacketInformation(extractedPacket);
                 if (packet == null || packet.Payload?.Value == null)
                 {
                     Console.WriteLine("Warning: Invalid or corrupted packet.");
                     continue;
                 }
+
                 if (packet.DeviceId == DeviceId.TimeSync)
                 {
                     Console.WriteLine(
@@ -79,6 +78,7 @@ namespace backend.Library.Services.DataProcessors.Analyzers
                     offset = (long)(t2 - t0);
                     Console.WriteLine("Offset calculated: " + offset);
                 }
+
                 if (packet.DeviceId == DeviceId.System)
                 {
                     string payloadString = Encoding.UTF8.GetString(packet.Payload.Value);
@@ -88,77 +88,74 @@ namespace backend.Library.Services.DataProcessors.Analyzers
                         $"Packet number {packetNumber}: {payloadString} \n"
                     );
                 }
-                _packetResync.AddPacket(packet);
 
-                // Console.WriteLine(
-                //     "Packet DeviceId: {0}, Timestamp: {1}, Payload Length: {2}",
-                //     packet.DeviceId,
-                //     packet.Timestamp,
-                //     packet.Payload.Value.Length
-                // );
-                packetNumber++;
-            }
-            Console.WriteLine("Total packets processed: {0}", packetNumber);
-
-            List<Packet>? list;
-            Console.WriteLine("Getting next group of packets...");
-
-            while ((list = _packetResync.GetNextGroup()) != null && list.Count > 0)
-            {
-                foreach (Packet packet in list)
+                // Flush the completed time-window group whenever a packet falls outside it,
+                // matching the incremental approach used by SerialProvider.
+                bool fitsCurrentBatch = _packetResync.AddPacket(packet);
+                if (!fitsCurrentBatch)
                 {
-                    SerialProvider.DataLabel label = packet.DeviceId switch
-                    {
-                        DeviceId.PressureSensor => SerialProvider.DataLabel.Pressure,
-                        DeviceId.TemperatureSensor => SerialProvider.DataLabel.Temperature,
-                        DeviceId.HumiditySensor => SerialProvider.DataLabel.Humidity,
-                        DeviceId.System => SerialProvider.DataLabel.System,
-                        DeviceId.Unknown => SerialProvider.DataLabel.Unknown,
-                        DeviceId.Gps => SerialProvider.DataLabel.Gps,
-                        DeviceId.Accelerometer => SerialProvider.DataLabel.AccelerationData,
-                        _ => SerialProvider.DataLabel.Unknown,
-                    };
-                    _currentData[label] = packet.Payload.Value ?? BitConverter.GetBytes(float.NaN);
+                    List<Packet>? completedGroup = _packetResync.GetNextGroup(
+                        pendingPacket: packet
+                    );
+                    if (completedGroup != null)
+                        SendGroup(completedGroup);
                 }
 
-                ulong timestamp = list[0].Timestamp;
-
-                GPSCoords coords = new()
-                {
-                    Latitude = _currentData.TryGetValue(
-                        SerialProvider.DataLabel.Gps,
-                        out byte[]? latBytes
-                    )
-                        ? BitConverter.ToDouble(latBytes, 0)
-                        : double.NaN,
-                    Longitude = _currentData.TryGetValue(
-                        SerialProvider.DataLabel.Gps,
-                        out byte[]? lonBytes
-                    )
-                        ? BitConverter.ToDouble(lonBytes, 8)
-                        : double.NaN,
-                    Altitude = _currentData.TryGetValue(
-                        SerialProvider.DataLabel.Gps,
-                        out byte[]? altitudeBytes
-                    )
-                        ? BitConverter.ToSingle(altitudeBytes, 16)
-                        : float.NaN,
-                };
-
-                OnDataProvided?.Invoke(
-                    new EventData<Dictionary<SerialProvider.DataLabel, byte[]>>
-                    {
-                        DataStamp = new DataStamp
-                        {
-                            Offset = offset,
-                            Timestamp = timestamp,
-                            Coordinates = coords,
-                        },
-                        Data = _currentData,
-                    }
-                );
-                _currentData.Clear();
+                packetNumber++;
             }
+
+            Console.WriteLine("Total packets processed: {0}", packetNumber);
+
+            // Flush any packets still in the buffer after the last time window
+            List<Packet>? trailingGroup = _packetResync.GetNextGroup(pendingPacket: null);
+            if (trailingGroup != null)
+                SendGroup(trailingGroup);
+        }
+
+        private void SendGroup(List<Packet> list)
+        {
+            _currentData.Clear();
+            foreach (Packet packet in list)
+            {
+                SerialProvider.DataLabel label = packet.DeviceId switch
+                {
+                    DeviceId.PressureSensor => SerialProvider.DataLabel.Pressure,
+                    DeviceId.TemperatureSensor => SerialProvider.DataLabel.Temperature,
+                    DeviceId.HumiditySensor => SerialProvider.DataLabel.Humidity,
+                    DeviceId.System => SerialProvider.DataLabel.System,
+                    DeviceId.Unknown => SerialProvider.DataLabel.Unknown,
+                    DeviceId.Gps => SerialProvider.DataLabel.Gps,
+                    DeviceId.Accelerometer => SerialProvider.DataLabel.AccelerationData,
+                    _ => SerialProvider.DataLabel.Unknown,
+                };
+                _currentData[label] = packet.Payload.Value ?? BitConverter.GetBytes(float.NaN);
+            }
+
+            ulong timestamp = list[0].Timestamp;
+
+            bool hasGps =
+                _currentData.TryGetValue(SerialProvider.DataLabel.Gps, out byte[]? gpsBytes)
+                && gpsBytes!.Length >= 20;
+
+            GPSCoords coords = new()
+            {
+                Latitude = hasGps ? BitConverter.ToDouble(gpsBytes!, 0) : double.NaN,
+                Longitude = hasGps ? BitConverter.ToDouble(gpsBytes!, 8) : double.NaN,
+                Altitude = hasGps ? BitConverter.ToSingle(gpsBytes!, 16) : float.NaN,
+            };
+
+            OnDataProvided?.Invoke(
+                new EventData<Dictionary<SerialProvider.DataLabel, byte[]>>
+                {
+                    DataStamp = new DataStamp
+                    {
+                        Offset = offset,
+                        Timestamp = timestamp,
+                        Coordinates = coords,
+                    },
+                    Data = new Dictionary<SerialProvider.DataLabel, byte[]>(_currentData),
+                }
+            );
         }
     }
 }

@@ -1,0 +1,2497 @@
+==> Library/Models/DataStamp.cs <==
+﻿namespace backend.Library.Models
+{
+    /// <summary>
+    /// Reference data which is attached to all data.
+    /// </summary>
+    public readonly struct DataStamp
+    {
+        /// <summary>
+        /// Microseconds since the Unix Epoch (00:00:00 UTC+0 1 January 1970).
+        /// </summary>
+        public ulong Timestamp { get; init; }
+
+        /// <summary>
+        /// Time Delay from groundstation to CanSat.
+        /// </summary>
+        public long Offset { get; init; }
+
+        /// <summary>
+        /// Coordinates registered by the GPS when the data was sent
+        /// </summary>
+        public GPSCoords Coordinates { get; init; }
+    }
+}
+
+==> Library/Models/Acceleration.cs <==
+﻿namespace backend.Library.Models
+{
+    public readonly struct Acceleration
+    {
+        public float X { init; get; }
+        public float Y { init; get; }
+        public float Z { init; get; }
+    }
+}
+
+==> Library/Models/GPSCoords.cs <==
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace backend.Library.Models
+{
+    /// <summary>
+    /// Represents GPS coordinates - latitude, longitude and altitude.
+    /// </summary>
+    public readonly struct GPSCoords
+    {
+        /// <summary>
+        /// Vertical angle, measured with respect to the equator.
+        /// -90º is the south pole, 0º is the equator and 90º is the north pole.
+        /// </summary>
+        [Range(-90, 90)]
+        public double Latitude { get; init; }
+
+        /// <summary>
+        /// Horizontal angle, measured with respect to the Greenwich semi-meridian.
+        /// 0º is the Greenwich semi-meridian, 180º and -180º
+        /// </summary>
+        [Range(-180, 180)]
+        public double Longitude { get; init; }
+
+        /// <summary>
+        /// Meters above average sea level.
+        /// </summary>
+        public float Altitude { get; init; }
+    }
+}
+
+==> Library/Models/EventData.cs <==
+﻿namespace backend.Library.Models
+{
+    /// <summary>
+    /// Wrapper class which packs the data along with a
+    /// <see cref="Models.DataStamp"/> object
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    public readonly struct EventData<T>
+    {
+        public DataStamp DataStamp { get; init; }
+        public T Data { get; init; }
+    }
+}
+
+==> Library/Extensions/ASPExtensions.cs <==
+﻿using System.Text.Json;
+using backend.Library.Services.EventFinalizers;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace backend.Library.Extensions
+{
+    public static class ASPExtensions
+    {
+        /// <summary>
+        /// Add a finalizer service to an IServiceCollection.
+        /// </summary>
+        /// <typeparam name="TFinalizer">Type of the finalizer to be added</typeparam>
+        /// <param name="services"></param>
+        /// <returns></returns>
+        public static IServiceCollection AddFinalizer<TFinalizer>(this IServiceCollection services)
+            where TFinalizer : class, IFinalizedProvider
+        {
+            // Two singletons are added to expose the same object as both a TFinalizer, whatever it might be, and an IFinalizedProvider
+            // At least I think that's the reason...
+            return services
+                .AddSingleton<TFinalizer>()
+                .AddSingleton(provider =>
+                    (IFinalizedProvider)provider.GetRequiredService<TFinalizer>()
+                );
+        }
+
+        /// <summary>
+        /// Write an object encoded as JSON to an HttpResponse
+        /// </summary>
+        /// <param name="response"></param>
+        /// <param name="value">The object to be encoded and written</param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public static Task WriteJSONAsync(
+            this HttpResponse response,
+            object value,
+            CancellationToken cancellationToken = default
+        )
+        {
+            JsonSerializerOptions opts = new JsonSerializerOptions
+            {
+                NumberHandling = System
+                    .Text
+                    .Json
+                    .Serialization
+                    .JsonNumberHandling
+                    .AllowNamedFloatingPointLiterals,
+            };
+
+            // WriteAsync does this, so it's done here too
+            ArgumentNullException.ThrowIfNull(response);
+            ArgumentNullException.ThrowIfNull(value);
+
+            return response.WriteAsync(JsonSerializer.Serialize(value, opts), cancellationToken);
+        }
+    }
+}
+
+==> Library/Library.csproj <==
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.2" />
+    <PackageReference Include="OrbiPacket" Version="1.6.1" />
+    <PackageReference Include="System.IO.Ports" Version="9.0.2" />
+  </ItemGroup>
+
+</Project>
+==> Library/Services/DataProviders/IDataProvider.cs <==
+﻿using backend.Library.Models;
+
+namespace backend.Library.Services.DataProviders
+{
+    /// <summary>
+    /// Contract for a data provider.
+    /// </summary>
+    /// <typeparam name="T">The type of the data provided</typeparam>
+    public interface IDataProvider<T>
+    {
+        /// <summary>
+        /// Event triggered whenever the provider has new data.
+        /// Subscribe to this event to act on the new data.
+        /// </summary>
+        event Action<EventData<T>>? OnDataProvided;
+    }
+}
+
+==> Library/Services/DataProviders/MockDataProvider.cs <==
+﻿using System.Timers;
+using backend.Library.Models;
+using Microsoft.Extensions.Logging;
+
+namespace backend.Library.Services.DataProviders
+{
+    /// <summary>
+    /// Provides fake data created on the fly.
+    /// </summary>
+    public sealed class MockDataProvider
+        : IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>,
+            IDisposable
+    {
+        private readonly Random _random = new();
+        public event Action<
+            EventData<Dictionary<SerialProvider.DataLabel, byte[]>>
+        >? OnDataProvided;
+        private float _altitude = 1000;
+        private float _temperature = 20;
+        private float _pressure = 100000;
+        private float _humidity = 50;
+        private float _accelerationX,
+            _accelerationY,
+            _accelerationZ;
+        private float _latitude,
+            _longitude;
+
+        // Logger provided by DI, used for printing information to all logging providers at once
+        private readonly ILogger<MockDataProvider> _logger;
+
+        private readonly System.Timers.Timer _timer;
+        private readonly System.Diagnostics.Stopwatch _stopwatch;
+
+        public MockDataProvider(ILogger<MockDataProvider> logger)
+        {
+            _logger = logger;
+            _timer = new System.Timers.Timer(250) { AutoReset = true };
+            _timer.Elapsed += GenerateMockData;
+            _timer.Start();
+            _logger.LogInformation("MockDataProvider started");
+            _stopwatch = new System.Diagnostics.Stopwatch();
+            _stopwatch.Start();
+        }
+
+        private void GenerateMockData(object? sender, ElapsedEventArgs e)
+        {
+            long now = (long)(_stopwatch.ElapsedMilliseconds * 1e3);
+            _pressure += _random.Next(-100, 100);
+            _altitude += _random.Next(-10, 10);
+            _temperature += _random.Next(-1, 1) * 0.01f;
+            _humidity += _random.Next(-1, 1) * 0.01f;
+            _accelerationX += _random.Next(-1, 1) * 0.1f;
+            _accelerationY += _random.Next(-1, 1) * 0.1f;
+            _accelerationZ += _random.Next(-1, 1) * 0.1f;
+            _latitude = 38.685347f;
+            _longitude = -9.318425f;
+
+            Dictionary<SerialProvider.DataLabel, byte[]> lastData = new Dictionary<
+                SerialProvider.DataLabel,
+                byte[]
+            >
+            {
+                { SerialProvider.DataLabel.Timestamp, BitConverter.GetBytes(now) },
+                { SerialProvider.DataLabel.Pressure, BitConverter.GetBytes(_pressure) },
+                { SerialProvider.DataLabel.Temperature, BitConverter.GetBytes(_temperature) },
+                { SerialProvider.DataLabel.Humidity, BitConverter.GetBytes(_humidity) },
+                { SerialProvider.DataLabel.Latitude, BitConverter.GetBytes(_latitude) },
+                { SerialProvider.DataLabel.Longitude, BitConverter.GetBytes(_longitude) },
+            };
+            OnDataProvided?.Invoke(
+                new EventData<Dictionary<SerialProvider.DataLabel, byte[]>>
+                {
+                    DataStamp = new DataStamp
+                    {
+                        Timestamp = (ulong)now,
+                        Coordinates = new GPSCoords
+                        {
+                            Latitude = _latitude,
+                            Longitude = _longitude,
+                        },
+                    },
+                    Data = lastData,
+                }
+            );
+            _logger.LogInformation("Generated Mock Data");
+        }
+
+        public void Dispose()
+        {
+            _timer.Stop();
+            _timer.Dispose();
+        }
+    }
+}
+
+==> Library/Services/DataProviders/FileProvider.cs <==
+using System.Runtime.CompilerServices;
+using System.Text;
+using backend.Library.Models;
+using backend.Library.Services.DataProviders;
+using Orbipacket;
+
+namespace backend.Library.Services.DataProcessors.Analyzers
+{
+    /// <summary>
+    /// Raw binary file analyser for directly accesing log files
+    /// and producing csv data files.
+    /// </summary>
+    public sealed class FileProvider : IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>
+    {
+        public event Action<
+            EventData<Dictionary<SerialProvider.DataLabel, byte[]>>
+        >? OnDataProvided;
+
+        private long offset = 0;
+        private ulong t0,
+            t2;
+        private readonly string directory,
+            fileName,
+            filePath;
+        private readonly PacketResync _packetResync = new();
+        private readonly PacketBuffer _packetBuffer = new();
+        private readonly Dictionary<SerialProvider.DataLabel, byte[]> _currentData = [];
+
+        public FileProvider()
+        {
+            directory = "SystemMessages";
+            fileName = $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}-RAW.txt";
+
+            filePath = Path.GetFullPath(Path.Combine(directory, fileName));
+            Directory.CreateDirectory(directory);
+        }
+
+        /// <summary>
+        /// Analyse the contents of a binary file and extract packets.
+        /// </summary>
+        /// <param name="filepath">Path to the binary file.</param>
+        public void AnalyseFileContents(string filepath)
+        {
+            int packetNumber = 0;
+            byte[] fileBytes = File.ReadAllBytes(filepath);
+
+            _packetBuffer.Add(fileBytes);
+            // Console.WriteLine("Analysing bytes from {0} to {1}", i, i + byteWindow);
+            byte[]? extractedPacket;
+
+            while ((extractedPacket = _packetBuffer.ExtractFirstValidPacket()) != null)
+            {
+                if (packetNumber % 100 == 0)
+                {
+                    Console.WriteLine("Processing packet number: {0}", packetNumber);
+                }
+                Packet? packet = Decode.GetPacketInformation(extractedPacket);
+                if (packet == null || packet.Payload?.Value == null)
+                {
+                    Console.WriteLine("Warning: Invalid or corrupted packet.");
+                    continue;
+                }
+                if (packet.DeviceId == DeviceId.TimeSync)
+                {
+                    Console.WriteLine(
+                        "Packet number " + packetNumber + " with TimeSync DeviceId found."
+                    );
+                    try
+                    {
+                        t0 = BitConverter.ToUInt64(packet.Payload.Value, 0);
+                        t2 = BitConverter.ToUInt64(packet.Payload.Value, 16);
+                    }
+                    catch (System.ArgumentOutOfRangeException)
+                    {
+                        Console.WriteLine("Error calculating the offset.");
+                    }
+                    // Here we can't exactly replicate the last t3, so I'm going to consider the
+                    // offset as simply t2 - t0
+                    offset = (long)(t2 - t0);
+                    Console.WriteLine("Offset calculated: " + offset);
+                }
+                if (packet.DeviceId == DeviceId.System)
+                {
+                    string payloadString = Encoding.UTF8.GetString(packet.Payload.Value);
+                    Console.WriteLine("System data: " + payloadString);
+                    File.AppendAllText(
+                        filePath,
+                        $"Packet number {packetNumber}: {payloadString} \n"
+                    );
+                }
+                _packetResync.AddPacket(packet);
+
+                // Console.WriteLine(
+                //     "Packet DeviceId: {0}, Timestamp: {1}, Payload Length: {2}",
+                //     packet.DeviceId,
+                //     packet.Timestamp,
+                //     packet.Payload.Value.Length
+                // );
+                packetNumber++;
+            }
+            Console.WriteLine("Total packets processed: {0}", packetNumber);
+
+            List<Packet>? list;
+            Console.WriteLine("Getting next group of packets...");
+
+            while ((list = _packetResync.GetNextGroup()) != null && list.Count > 0)
+            {
+                foreach (Packet packet in list)
+                {
+                    SerialProvider.DataLabel label = packet.DeviceId switch
+                    {
+                        DeviceId.PressureSensor => SerialProvider.DataLabel.Pressure,
+                        DeviceId.TemperatureSensor => SerialProvider.DataLabel.Temperature,
+                        DeviceId.HumiditySensor => SerialProvider.DataLabel.Humidity,
+                        DeviceId.System => SerialProvider.DataLabel.System,
+                        DeviceId.Unknown => SerialProvider.DataLabel.Unknown,
+                        DeviceId.Gps => SerialProvider.DataLabel.Gps,
+                        DeviceId.Accelerometer => SerialProvider.DataLabel.AccelerationData,
+                        _ => SerialProvider.DataLabel.Unknown,
+                    };
+                    _currentData[label] = packet.Payload.Value ?? BitConverter.GetBytes(float.NaN);
+                }
+
+                ulong timestamp = list[0].Timestamp;
+
+                GPSCoords coords = new()
+                {
+                    Latitude = _currentData.TryGetValue(
+                        SerialProvider.DataLabel.Gps,
+                        out byte[]? latBytes
+                    )
+                        ? BitConverter.ToDouble(latBytes, 0)
+                        : double.NaN,
+                    Longitude = _currentData.TryGetValue(
+                        SerialProvider.DataLabel.Gps,
+                        out byte[]? lonBytes
+                    )
+                        ? BitConverter.ToDouble(lonBytes, 8)
+                        : double.NaN,
+                    Altitude = _currentData.TryGetValue(
+                        SerialProvider.DataLabel.Gps,
+                        out byte[]? altitudeBytes
+                    )
+                        ? BitConverter.ToSingle(altitudeBytes, 16)
+                        : float.NaN,
+                };
+
+                OnDataProvided?.Invoke(
+                    new EventData<Dictionary<SerialProvider.DataLabel, byte[]>>
+                    {
+                        DataStamp = new DataStamp
+                        {
+                            Offset = offset,
+                            Timestamp = timestamp,
+                            Coordinates = coords,
+                        },
+                        Data = _currentData,
+                    }
+                );
+                _currentData.Clear();
+            }
+        }
+    }
+}
+
+==> Library/Services/DataProviders/SerialProvider.cs <==
+﻿using System.ComponentModel.DataAnnotations;
+using System.Globalization;
+using System.IO;
+using System.IO.Ports;
+using System.Text;
+using backend.Library.Models;
+using backend.Library.Services.DataProcessors;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Orbipacket;
+
+namespace backend.Library.Services.DataProviders
+{
+    /// <summary>
+    /// Provides data read from a serial port.
+    /// </summary>
+    public sealed class SerialProvider
+        : IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>,
+            IDisposable,
+            IPacketSender
+    {
+        /// <summary>
+        /// Represent the index of each data piece in the list provided by a SerialProvider.
+        /// </summary>
+        public enum DataLabel
+        {
+            System,
+            TimeSync,
+            Gps,
+            Camera,
+            AccelerationX,
+            AccelerationY,
+            AccelerationZ,
+            Gyroscope,
+            Altitude,
+            Magnetometer,
+            Pressure,
+            Temperature,
+            Humidity,
+            Radiation,
+            Mission1,
+            Misison2,
+            Mission3,
+            Mission4,
+            Latitude,
+            Longitude,
+            AccelerationData,
+            Timestamp,
+            Unknown,
+        }
+
+        public event Action<EventData<Dictionary<DataLabel, byte[]>>>? OnDataProvided;
+
+        // Logger provided by DI, used for printing information to all logging providers at once
+        private readonly ILogger<SerialProvider> _logger;
+        private readonly SerialPort _serialPort;
+        private readonly PacketResync packetResync = new();
+        private bool _isProcessing;
+        private readonly PacketBuffer _packetBuffer = new();
+        private readonly Dictionary<DataLabel, byte[]> _currentData;
+        private readonly string directory,
+            fileName,
+            filePath;
+        private long offsetToApply = 0;
+        private readonly IServiceProvider _serviceProvider;
+
+        private readonly System.Timers.Timer _timer;
+
+        /// <summary>
+        /// Create a new instance of SerialProvider
+        /// </summary>
+        /// <param name="portName">Name of the port from which data will be read</param>
+        /// <param name="baudRate">Baud rate, in bps, of the serial port</param>
+        /// <param name="parity">Parity of the serial port</param>
+        /// <param name="logger"></param>
+        public SerialProvider(
+            string portName,
+            int baudRate,
+            Parity parity,
+            ILogger<SerialProvider> logger,
+            IServiceProvider serviceProvider
+        )
+        {
+            _logger = logger;
+            _currentData = [];
+            _serviceProvider = serviceProvider;
+            // Note that more options are available for configuring a SerialPort,
+            // namely data bits, stop bits and handshake. I have no idea what those
+            // are, and am very likely to ever change them in the radio modules
+            // configuration, so it's most probably (read hopefully) fine to keep
+            // them at the default value.
+            // TODO: research about choosing a good baud rate
+            _serialPort = new SerialPort(portName, baudRate, parity)
+            {
+                // I have no clue what a reasonable value for this is
+                ReadTimeout = 400,
+                WriteTimeout = 400,
+                ReceivedBytesThreshold = 1,
+            };
+            // Open the port
+            _serialPort.Open();
+
+            directory = "RawData";
+            fileName = $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}-RAW.raw";
+            filePath = Path.GetFullPath(Path.Combine(directory, fileName));
+            Directory.CreateDirectory(directory);
+            // Set up event listeners
+            _timer = new System.Timers.Timer(500) { AutoReset = true };
+            _timer.Elapsed += CheckForIncomingData;
+            _timer.Start();
+        }
+
+        private void CheckForIncomingData(object? sender, System.Timers.ElapsedEventArgs e)
+        {
+            if (_serialPort.BytesToRead != 0)
+            {
+                ReceiveAndSendData(sender, e);
+            }
+        }
+
+        /// <summary>
+        /// Handle data being received on the serial port
+        /// </summary>
+        /// <param name="sender">The SerialPort object which raised the event</param>
+        /// <param name="e"></param>
+        private void ReceiveAndSendData(object? sender, System.Timers.ElapsedEventArgs e)
+        {
+            _timer.Start();
+            try
+            {
+                if (_isProcessing) // Avoid re-entrancy
+                {
+                    return;
+                }
+
+                _isProcessing = true;
+                _timer.Stop();
+
+                int byteNumber = _serialPort.BytesToRead;
+                byte[] byteBuffer = new byte[byteNumber];
+                _serialPort.Read(byteBuffer, 0, byteNumber);
+                try
+                {
+                    File.AppendAllBytes(filePath, byteBuffer);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Write error");
+                }
+
+                // _logger.LogInformation("Data arrived: " + BitConverter.ToString(byteBuffer));
+                _packetBuffer.Add(byteBuffer);
+
+                byte[]? extractedPacket;
+
+                // Use the same approach I used in testing
+                while ((extractedPacket = _packetBuffer.ExtractFirstValidPacket()) != null)
+                {
+                    // _logger.LogInformation(
+                    //     "Extracted packet: {packet}",
+                    //     BitConverter.ToString([.. extractedPacket.Skip(2)]).Replace("-", " ")
+                    // );
+                    Packet? packet = Decode.GetPacketInformation(extractedPacket);
+
+                    if (packet == null || packet.Payload?.Value == null)
+                    {
+                        _logger.LogWarning("Invalid or corrupted packet.");
+                        continue;
+                    }
+                    bool fitsCurrentBatch = packetResync.AddPacket(packet);
+                    // _logger.LogInformation(
+                    // "Packet raw: " + BitConverter.ToString(extractedPacket)
+                    // );
+                    // _logger.LogInformation(
+                    //     "{label} data: {data}",
+                    //     packet.DeviceId,
+                    //     BitConverter
+                    //         .ToSingle(packet.Payload.Value, 0)
+                    //         .ToString(CultureInfo.InvariantCulture)
+                    // );
+
+                    if (!fitsCurrentBatch)
+                    {
+                        // The packets are already too old, new packets came
+                        List<Packet>? completedGroup = packetResync.GetNextGroup(
+                            pendingPacket: packet
+                        );
+                        if (completedGroup != null)
+                        {
+                            SendToExtractors(completedGroup);
+                        }
+                    }
+                }
+                List<Packet>? trailingGroup = packetResync.GetNextGroup(pendingPacket: null);
+                if (trailingGroup != null)
+                {
+                    SendToExtractors(trailingGroup);
+                }
+            }
+            finally
+            {
+                _isProcessing = false;
+                _timer.Start();
+            }
+        }
+
+        private void SendToExtractors(List<Packet> list)
+        {
+            foreach (Packet packet in list)
+            {
+                DataLabel label = packet.DeviceId switch
+                {
+                    DeviceId.PressureSensor => DataLabel.Pressure,
+                    DeviceId.TemperatureSensor => DataLabel.Temperature,
+                    DeviceId.HumiditySensor => DataLabel.Humidity,
+                    DeviceId.System => DataLabel.System,
+                    DeviceId.Unknown => DataLabel.Unknown,
+                    DeviceId.Gps => DataLabel.Gps,
+                    DeviceId.Accelerometer => DataLabel.AccelerationData,
+                    DeviceId.TimeSync => DataLabel.TimeSync,
+                    DeviceId.Camera => DataLabel.Camera,
+                    _ => throw new NotImplementedException(),
+                };
+                _currentData[label] = packet.Payload.Value;
+
+                // These logs can easily be removed, but
+                // they are converting from byte[] to string at every packet received.
+                if (label == DataLabel.System)
+                {
+                    _logger.LogInformation(
+                        "System data: {data}",
+                        BitConverter.ToString(packet.Payload.Value)
+                    );
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "{label} data: {data}",
+                        label,
+                        BitConverter
+                            .ToSingle(packet.Payload.Value, 0)
+                            .ToString(CultureInfo.InvariantCulture)
+                    );
+                }
+            }
+
+            Dictionary<DataLabel, byte[]> dict = new(_currentData);
+            ulong timestamp = list[0].Timestamp;
+            bool hasGps = _currentData.TryGetValue(DataLabel.Gps, out byte[]? gpsBytes);
+
+            GPSCoords coords = new()
+            {
+                Latitude =
+                    hasGps && gpsBytes!.Length >= 8
+                        ? BitConverter.ToDouble(gpsBytes, 0)
+                        : double.NaN,
+                Longitude =
+                    hasGps && gpsBytes!.Length >= 16
+                        ? BitConverter.ToDouble(gpsBytes, 8)
+                        : double.NaN,
+                Altitude =
+                    hasGps && gpsBytes!.Length >= 20
+                        ? BitConverter.ToSingle(gpsBytes, 16)
+                        : float.NaN,
+            };
+
+            TimeSyncService? timeSyncService = _serviceProvider?.GetService<TimeSyncService>();
+
+            offsetToApply = timeSyncService?.Offset ?? 0;
+
+            // _logger.LogInformation(
+            //     "GPS Data: {coords}",
+            //     coords.Latitude + ", " + coords.Longitude
+            // );
+
+            OnDataProvided?.Invoke(
+                new EventData<Dictionary<DataLabel, byte[]>>
+                {
+                    DataStamp = new DataStamp
+                    {
+                        Offset = offsetToApply,
+                        Timestamp = timestamp,
+                        Coordinates = coords,
+                    },
+                    Data = dict,
+                }
+            );
+            _currentData.Clear();
+        }
+
+        public void SendPacket(byte[] packetData)
+        {
+            if (!_serialPort.IsOpen)
+            {
+                _logger.LogWarning("Serial port is not open. Cannot send packet.");
+                return;
+            }
+
+            try
+            {
+                _serialPort.Write(packetData, 0, packetData.Length);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send packet over serial port.");
+            }
+        }
+
+        public void Dispose()
+        {
+            _timer.Stop();
+            _timer.Elapsed -= CheckForIncomingData;
+            _timer.Dispose();
+
+            if (_serialPort.IsOpen)
+            {
+                _serialPort.Close();
+            }
+            _serialPort.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Interface for sending packets over a serial connection.
+    /// </summary>
+    public interface IPacketSender
+    {
+        /// <summary>
+        /// Sends a packet over the selected serial port.
+        /// </summary>
+        /// <param name="packetData">The encoded packet data.</param>
+        void SendPacket(byte[] packetData);
+    }
+}
+
+==> Library/Services/DataProviders/LegacySerialProvider.cs <==
+﻿using System.Globalization;
+using System.IO.Ports;
+using backend.Library.Models;
+using Microsoft.Extensions.Logging;
+
+namespace backend.Library.Services.DataProviders
+{
+    /// <summary>
+    /// Provides data read from a serial port.
+    /// </summary>
+    public sealed class LegacySerialProvider
+        : IDataProvider<Dictionary<LegacySerialProvider.DataLabel, string>>,
+            IDisposable
+    {
+        /// <summary>
+        /// Represent the index of each data piece in the list provided by a LegacySerialProvider.
+        /// </summary>
+        /// <remarks>
+        /// This enum must be updated to match the formatting of the data sent by the Arduino.
+        /// </remarks>
+        public enum DataLabel
+        {
+            Timestamp,
+            Pressure,
+            Temperature,
+            AccelerationX,
+            AccelerationY,
+            AccelerationZ,
+            Latitude,
+            Longitude,
+            Altitude,
+        }
+
+        public event Action<EventData<Dictionary<DataLabel, string>>>? OnDataProvided;
+
+        // Logger provided by DI, used for printing information to all logging providers at once
+        private readonly ILogger<LegacySerialProvider> _logger;
+        private readonly SerialPort _serialPort;
+        private readonly Dictionary<DataLabel, int> _schema = [];
+
+        private string _buffer = "";
+
+        private readonly System.Timers.Timer _timer;
+
+        /// <summary>
+        /// Create a new instance of LegacySerialProvider
+        /// </summary>
+        /// <param name="portName">Name of the port from which data will be read</param>
+        /// <param name="baudRate">Baud rate, in bps, of the serial port</param>
+        /// <param name="parity">Parity of the serial port</param>
+        /// <param name="logger"></param>
+        public LegacySerialProvider(
+            string portName,
+            int baudRate,
+            Parity parity,
+            ILogger<LegacySerialProvider> logger
+        )
+        {
+            _logger = logger;
+            // Note that more options are available for configuring a SerialPort,
+            // namely data bits, stop bits and handshake. I have no idea what those
+            // are, and am very likely to ever change them in the radio modules
+            // configuration, so it's most probably (read hopefully) fine to keep
+            // them at the default value.
+            // TODO: research about choosing a good baud rate
+            _serialPort = new SerialPort(portName, baudRate, parity)
+            {
+                // I have no clue what a reasonable value for this is
+                ReadTimeout = 500,
+                WriteTimeout = 500,
+            };
+            // Open the port
+            _serialPort.Open();
+            // Set up event listeners
+            _timer = new System.Timers.Timer(500) { AutoReset = true };
+            _timer.Elapsed += HandleDataReceived;
+            _timer.Start();
+        }
+
+        /// <summary>
+        /// Handle data being received on the serial port
+        /// </summary>
+        /// <param name="sender">The SerialPort object which raised the event</param>
+        /// <param name="e"></param>
+        private void HandleDataReceived(object? sender, System.Timers.ElapsedEventArgs e)
+        {
+            _logger.LogInformation("Receiving...");
+            _buffer += _serialPort.ReadExisting();
+            _buffer = _buffer.TrimStart();
+            while (_buffer.Contains('\n'))
+            {
+                int idx = _buffer.IndexOf('\n');
+                string line = _buffer[..idx];
+                _buffer = _buffer[(idx + 1)..];
+                HandleLineReceived(line);
+            }
+        }
+
+        private void HandleLineReceived(string line)
+        {
+            _logger.LogInformation("LINE: {line}", line);
+            ;
+            // Check for schema message
+            if (line.StartsWith("schema", StringComparison.CurrentCultureIgnoreCase))
+            {
+                ParseSchema(line.ToLower().Replace("schema", ""));
+                return;
+            }
+
+            if (line.Trim() != "")
+                // Process and emit data
+                OnDataProvided?.Invoke(WrapInEventData(line));
+        }
+
+        /// <summary>
+        /// Parses a schema message from the serial port, registering its info in <see cref="_schema"/>
+        /// </summary>
+        /// <param name="schema">Schema message from the serial port</param>
+        /// <exception cref="InvalidDataException">Thrown if <paramref name="schema"/> doesn't fit the expected format</exception>
+        private void ParseSchema(string schema)
+        {
+            _logger.LogInformation("Schema: {data}", schema);
+            string[] data = schema.Split(':').Select(x => x.Trim().Trim('[', ']', ';')).ToArray();
+            for (int i = 0; i < data.Length; i++)
+            {
+                DataLabel key = data[i] switch
+                {
+                    "timestamp" => DataLabel.Timestamp,
+                    "pressure" => DataLabel.Pressure,
+                    "temperature" => DataLabel.Temperature,
+                    "acc_x" => DataLabel.AccelerationX,
+                    "acc_y" => DataLabel.AccelerationY,
+                    "acc_z" => DataLabel.AccelerationZ,
+                    "latitude" => DataLabel.Latitude,
+                    "longitude" => DataLabel.Longitude,
+                    "altitude" => DataLabel.Altitude,
+                    string entry => throw new InvalidDataException(
+                        $"Received unknown schema entry {entry} from serial port, consider adding a new item to {nameof(DataLabel)}"
+                    ),
+                };
+                _schema[key] = i;
+            }
+        }
+
+        /// <summary>
+        /// Wrap a message from a serial port in an EventData object
+        /// </summary>
+        /// <param name="message">The message, formatted as "[<data>]:[<data>]:...;"</param>
+        /// <returns>An EventData object containing the message, split into individual pieces</returns>
+        private EventData<Dictionary<DataLabel, string>> WrapInEventData(string message)
+        {
+            try
+            {
+                _logger.LogInformation("Message: {message}", message);
+                // Separate values
+                string[] data = [.. message.Split(':').Select(x => x.Trim().Trim('[', ']', ';'))];
+                // Build dictionary
+                Dictionary<DataLabel, string> dict = _schema
+                    .Select(x => (x.Key, data[x.Value]))
+                    .ToDictionary();
+                float latitude = float.NaN,
+                    longitude = float.NaN,
+                    altitude = float.NaN;
+                if (dict.TryGetValue(DataLabel.Latitude, out string? lat) && lat != "nan")
+                    latitude = float.Parse(lat, CultureInfo.InvariantCulture);
+                if (dict.TryGetValue(DataLabel.Longitude, out string? lon) && lon != "nan")
+                    longitude = float.Parse(lon, CultureInfo.InvariantCulture);
+                if (dict.TryGetValue(DataLabel.Altitude, out string? alt) && alt != "nan")
+                    altitude = float.Parse(alt, CultureInfo.InvariantCulture);
+                // Wrap data
+                return new EventData<Dictionary<DataLabel, string>>
+                {
+                    DataStamp = new DataStamp
+                    {
+                        Timestamp = ulong.Parse(
+                            dict[DataLabel.Timestamp],
+                            CultureInfo.InvariantCulture
+                        ),
+                        // TODO: get this info from message as well
+                        Coordinates = new GPSCoords { Latitude = latitude, Longitude = longitude },
+                    },
+                    Data = dict,
+                };
+            }
+            catch (KeyNotFoundException)
+            {
+                _logger.LogWarning(
+                    "Incomplete schema: {schema}; waiting for schema message.",
+                    _schema
+                );
+                throw;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Close the serial port so it can be used by other apps
+            _serialPort.Close();
+            _timer.Stop();
+            _timer.Dispose();
+        }
+    }
+}
+
+==> Library/Services/ServiceKeys.cs <==
+﻿namespace backend.Library.Services
+{
+    public enum ServiceKeys
+    {
+        DataProvider,
+        PressureExtractor,
+        TemperatureExtractor,
+        AltitudeExtractor,
+        AltitudeGPSExtractor,
+        AltitudeDeltaProcessor,
+        VelocityProcessor,
+        HumidityExtractor,
+        AccelerationXExtractor,
+        AccelerationYExtractor,
+        AccelerationZExtractor,
+        SerialSender,
+        TimeSyncService,
+    }
+}
+
+==> Library/Services/DataProcessors/VelocityProcessor.cs <==
+﻿using backend.Library.Models;
+using backend.Library.Services.DataProviders;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace backend.Library.Services.DataProcessors
+{
+    public class VelocityProcessor : DataProcessorBase<float, float>
+    {
+        private float _last = float.NaN;
+
+        public VelocityProcessor(
+            [FromKeyedServices(ServiceKeys.AltitudeExtractor)] IDataProvider<float> provider
+        )
+            : base(provider) { }
+
+        protected override EventData<float> Process(EventData<float> data)
+        {
+            float vel = 0;
+            if (!float.IsNaN(_last))
+                vel = data.Data - _last;
+            _last = data.Data;
+            return data with { Data = vel };
+        }
+    }
+}
+
+==> Library/Services/DataProcessors/PacketResync.cs <==
+﻿using System.Collections.Generic;
+using System.Linq;
+using Orbipacket;
+
+namespace backend.Library.Services.DataProcessors
+{
+    internal class PacketResync
+    {
+        // For the packets to be considered from the same point in time,
+        // they have to have a 400ms time between them.
+        // TODO: explain what happens if exceeded
+        private const ulong WINDOW_MICROSECONDS = 400_000;
+
+        private readonly List<Packet> _resyncBuffer = [];
+        private ulong? _lastSeenTimestamp = null;
+
+        /// <summary>
+        /// Adds a packet to the current packet buffer.
+        /// </summary>
+        /// <param name="packet">The packet to be added.</param>
+        /// <returns>True if the packet belongs to the current time batch. Returns false if it starts a new time batch (signaling you should extract the packets from the completed batch).</returns>
+        public bool AddPacket(Packet packet)
+        {
+            if (_lastSeenTimestamp == null)
+            {
+                _resyncBuffer.Add(packet);
+                _lastSeenTimestamp = packet.Timestamp;
+                return true;
+            }
+
+            // If packet is outside the current window, it belongs to a new batch
+            // Don't clear the buffer here, beacuse we will force-read everything already inside the buffer
+            // on GetNextGroup bc it returned false
+            if (AbsValueOfDiff(packet.Timestamp, (ulong)_lastSeenTimestamp) > WINDOW_MICROSECONDS)
+            {
+                return false;
+            }
+            _resyncBuffer.Add(packet);
+            _lastSeenTimestamp = packet.Timestamp;
+            return true;
+        }
+
+        // I took this approach bc it
+
+        /// <summary>
+        /// Flushes and returns the packet group for the 400ms time window.
+        /// If a new packet was held back and was too new for the current group, it automatically gets added to the buffer to the next window.
+        /// </summary>
+        /// <param name="pendingPacket"></param>
+        /// <returns></returns>
+        public List<Packet>? GetNextGroup(Packet? pendingPacket = null)
+        {
+            if (_resyncBuffer.Count == 0)
+            {
+                if (pendingPacket != null)
+                {
+                    _resyncBuffer.Add(pendingPacket);
+                    _lastSeenTimestamp = pendingPacket.Timestamp;
+                }
+                return null;
+            }
+
+            // Extract the lowest-timestamp packet per DeviceId
+            List<Packet> group =
+            [
+                .. _resyncBuffer.GroupBy(p => p.DeviceId).Select(g => g.MinBy(p => p.Timestamp)!),
+            ];
+
+            // Clear old window
+            _resyncBuffer.Clear();
+
+            // Start new window with the pending packet if one triggered this flush
+            if (pendingPacket != null)
+            {
+                _resyncBuffer.Add(pendingPacket);
+                _lastSeenTimestamp = pendingPacket.Timestamp;
+            }
+            else
+            {
+                _lastSeenTimestamp = null;
+            }
+
+            return group;
+        }
+
+        private static ulong AbsValueOfDiff(ulong a, ulong b)
+        {
+            return (a >= b) ? (a - b) : (b - a);
+        }
+    }
+}
+
+==> Library/Services/DataProcessors/AltitudeDeltaProcessor.cs <==
+﻿using backend.Library.Models;
+using backend.Library.Services.DataProviders;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace backend.Library.Services.DataProcessors
+{
+    public class AltitudeDeltaProcessor : DataProcessorBase<float, float>
+    {
+        public AltitudeDeltaProcessor(
+            [FromKeyedServices(ServiceKeys.AltitudeExtractor)] IDataProvider<float> provider
+        )
+            : base(provider) { }
+
+        private float _last = float.NaN;
+
+        protected override EventData<float> Process(EventData<float> data)
+        {
+            float altitudedelta = 0;
+            if (!float.IsNaN(_last))
+                altitudedelta = data.Data - _last;
+            _last = data.Data;
+
+            return data with
+            {
+                Data = altitudedelta,
+            };
+        }
+    }
+}
+
+==> Library/Services/DataProcessors/DataExtractors/HumidityExtractor.cs <==
+﻿using backend.Library.Services.DataProviders;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace backend.Library.Services.DataProcessors.DataExtractors
+{
+    /// <summary>
+    /// Extracts humidity data from SerialProvider data.
+    /// </summary>
+    public class HumidityExtractor : DataExtractorBase<float>
+    {
+        public HumidityExtractor(
+            [FromKeyedServices(ServiceKeys.DataProvider)]
+                IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>> provider
+        )
+            : base(provider)
+        {
+            // Extract humidity data
+            _sourceIndexes = [SerialProvider.DataLabel.Humidity];
+        }
+
+        protected override float Convert(IEnumerable<byte[]> data) =>
+            BitConverter.ToSingle(data.First(), 0);
+    }
+}
+
+==> Library/Services/DataProcessors/DataExtractors/AccelerationYExtractor.cs <==
+﻿using backend.Library.Services.DataProviders;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace backend.Library.Services.DataProcessors.DataExtractors
+{
+    /// <summary>
+    /// Extracts Acceleration Y data from SerialProvider data.
+    /// </summary>
+    public class AccelerationYExtractor : DataExtractorBase<float>
+    {
+        public AccelerationYExtractor(
+            [FromKeyedServices(ServiceKeys.DataProvider)]
+                IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>> provider
+        )
+            : base(provider)
+        {
+            // Extract Acceleration Y data
+            _sourceIndexes = [SerialProvider.DataLabel.AccelerationY];
+        }
+
+        protected override float Convert(IEnumerable<byte[]> data) =>
+            BitConverter.ToSingle(data.First(), 4);
+    }
+}
+
+==> Library/Services/DataProcessors/DataExtractors/DataExtractorBase.cs <==
+﻿using backend.Library.Models;
+using backend.Library.Services.DataProviders;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace backend.Library.Services.DataProcessors.DataExtractors
+{
+    /// <summary>
+    /// Base class for data extractors, i.e., classes which extract individual pieces of data from a SerialProvider
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    public abstract class DataExtractorBase<T>
+        : DataProcessorBase<Dictionary<SerialProvider.DataLabel, byte[]>, T>
+    {
+        /// <summary>
+        /// Indexes of the required data pieces in the array provided by SerialProvider
+        /// </summary>
+        protected SerialProvider.DataLabel[] _sourceIndexes = [];
+
+        protected DataExtractorBase(
+            [FromKeyedServices(ServiceKeys.DataProvider)]
+                IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>> provider
+        )
+            : base(provider) { }
+
+        /// <summary>
+        /// Convert the data piece into the proper format
+        /// </summary>
+        /// <param name="data">Data piece as a string</param>
+        /// <returns>Data piece as <typeparamref name="T"/></returns>
+        protected abstract T Convert(IEnumerable<byte[]> data);
+
+        protected override EventData<T> Process(
+            EventData<Dictionary<SerialProvider.DataLabel, byte[]>> data
+        )
+        {
+            IEnumerable<byte[]> selectedData = _sourceIndexes.Select(x =>
+                data.Data.TryGetValue(x, out byte[]? value) ? value : BitConverter.GetBytes(0.0f)
+            );
+
+            return new EventData<T> { DataStamp = data.DataStamp, Data = Convert(selectedData) };
+        }
+    }
+}
+
+==> Library/Services/DataProcessors/DataExtractors/AltitudeExtractor.cs <==
+﻿using backend.Library.Services.DataProviders;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace backend.Library.Services.DataProcessors.DataExtractors
+{
+    /// <summary>
+    /// Computes altitude from pressure and temperature data
+    /// </summary>
+    public class AltitudeExtractor : DataExtractorBase<float>
+    {
+        public AltitudeExtractor(
+            [FromKeyedServices(ServiceKeys.DataProvider)]
+                IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>> provider
+        )
+            : base(provider)
+        {
+            _sourceIndexes =
+            [
+                SerialProvider.DataLabel.Pressure,
+                SerialProvider.DataLabel.Temperature,
+                SerialProvider.DataLabel.Humidity,
+            ];
+        }
+
+        protected override float Convert(IEnumerable<byte[]> data)
+        {
+            float pressure = BitConverter.ToSingle(data.First(), 0);
+            // The temperature is stored in the second byte array, so we need to skip the first one.
+            float temperature = BitConverter.ToSingle(data.ElementAt(1), 0) + 273.15f;
+            float humidity = BitConverter.ToSingle(data.ElementAt(2), 0);
+
+            // Calculate the altitude from pressure and temperature. Based on the first formula from
+            // https://physics.stackexchange.com/questions/333475/how-to-calculate-altitude-from-current-temperature-and-pressure
+            // Physical constants are declared as variables in favour of readability and future changes to values.
+            // Their values are obtained from https://en.wikipedia.org/wiki/Barometric_formula. For layer-varying values,
+            // b=0 is used, as it appears to range between 0 and 11000 meters, so our maximum altitude of 1000 meters sits
+            // comfortably under the threshold.
+            float pressureRef = 101325f;
+            // This represents the exponent (g0 * M)/(R * L)
+
+            float exp = 5.2558f;
+            float e_s =
+                6.122f
+                * MathF.Pow(MathF.E, 17.67f * temperature / (temperature - 273.15f + 243.5f));
+            float e = e_s * humidity / 100;
+            float r = 0.622f * (e / (pressure - e));
+            float lapseRate =
+                9.8067f
+                * (
+                    (1 + 2501000f * r / (287.053f * temperature))
+                    / (1003.5f + 2501000f * 2501000f * r / (461.52f * temperature * temperature))
+                );
+            float altitude =
+                temperature
+                / lapseRate
+                * MathF.Pow(
+                    101325f / pressure,
+                    8.31432f * 1e3f * lapseRate / (9.8067f * 28.9644f) - 1
+                );
+            float pressure_bar_form = 44330 * (1 - MathF.Pow(pressure / 101325f, 1 / 5.255f));
+            float corrected_alt = pressure_bar_form * (temperature / (15f + 273.15f));
+            Console.WriteLine(corrected_alt);
+            Console.WriteLine(altitude / 1e3f);
+
+            return altitude / 1e3f;
+        }
+    }
+}
+
+==> Library/Services/DataProcessors/DataExtractors/AccelerationZExtractor.cs <==
+﻿using backend.Library.Services.DataProviders;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace backend.Library.Services.DataProcessors.DataExtractors
+{
+    /// <summary>
+    /// Extracts Acceleration Z data from SerialProvider data.
+    /// </summary>
+    public class AccelerationZExtractor : DataExtractorBase<float>
+    {
+        public AccelerationZExtractor(
+            [FromKeyedServices(ServiceKeys.DataProvider)]
+                IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>> provider
+        )
+            : base(provider)
+        {
+            // Extract Acceleration Z data
+            _sourceIndexes = [SerialProvider.DataLabel.AccelerationZ];
+        }
+
+        protected override float Convert(IEnumerable<byte[]> data) =>
+            BitConverter.ToSingle(data.First(), 8);
+    }
+}
+
+==> Library/Services/DataProcessors/DataExtractors/TemperatureExtractor.cs <==
+﻿using backend.Library.Services.DataProviders;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace backend.Library.Services.DataProcessors.DataExtractors
+{
+    /// <summary>
+    /// Extracts temperature data from SerialProvider data.
+    /// </summary>
+    public class TemperatureExtractor : DataExtractorBase<float>
+    {
+        public TemperatureExtractor(
+            [FromKeyedServices(ServiceKeys.DataProvider)]
+                IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>> provider
+        )
+            : base(provider)
+        {
+            // Extract temperature data
+            _sourceIndexes = [SerialProvider.DataLabel.Temperature];
+        }
+
+        protected override float Convert(IEnumerable<byte[]> data) =>
+            BitConverter.ToSingle(data.First(), 0);
+    }
+}
+
+==> Library/Services/DataProcessors/DataExtractors/AccelerationXExtractor.cs <==
+﻿using backend.Library.Services.DataProviders;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace backend.Library.Services.DataProcessors.DataExtractors
+{
+    /// <summary>
+    /// Extracts Acceleration X data from SerialProvider data.
+    /// </summary>
+    public class AccelerationXExtractor : DataExtractorBase<float>
+    {
+        public AccelerationXExtractor(
+            [FromKeyedServices(ServiceKeys.DataProvider)]
+                IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>> provider
+        )
+            : base(provider)
+        {
+            // Extract Acceleration X data
+            _sourceIndexes = [SerialProvider.DataLabel.AccelerationX];
+        }
+
+        protected override float Convert(IEnumerable<byte[]> data) =>
+            BitConverter.ToSingle(data.First(), 0);
+    }
+}
+
+==> Library/Services/DataProcessors/DataExtractors/PressureExtractor.cs <==
+﻿using backend.Library.Services.DataProviders;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace backend.Library.Services.DataProcessors.DataExtractors
+{
+    /// <summary>
+    /// Extracts pressure data from SerialProvider data.
+    /// </summary>
+    public class PressureExtractor : DataExtractorBase<float>
+    {
+        public PressureExtractor(
+            [FromKeyedServices(ServiceKeys.DataProvider)]
+                IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>> provider
+        )
+            : base(provider)
+        {
+            // Extract pressure data
+            _sourceIndexes = [SerialProvider.DataLabel.Pressure];
+        }
+
+        protected override float Convert(IEnumerable<byte[]> data) =>
+            BitConverter.ToSingle(data.First(), 0);
+    }
+}
+
+==> Library/Services/DataProcessors/DataProcessorBase.cs <==
+﻿using backend.Library.Models;
+using backend.Library.Services.DataProviders;
+
+namespace backend.Library.Services.DataProcessors
+{
+    /// <summary>
+    /// Abstract base class for a data processor.
+    /// Subscribes to an IDataProvider<T1>, transforms the T1 it provides into a T2, and re-sends the event
+    /// </summary>
+    /// <typeparam name="T1">The data type received by the processor</typeparam>
+    /// <typeparam name="T2">The data type emitted by the processor</typeparam>
+    public abstract class DataProcessorBase<T1, T2> : IDataProvider<T2>
+    {
+        public event Action<EventData<T2>>? OnDataProvided;
+
+        /// <summary>
+        /// Transform data from <see cref="T1"/> into <see cref="T2"/>
+        /// </summary>
+        /// <param name="data">The data to be processed</param>
+        /// <returns>The processed data</returns>
+        protected abstract EventData<T2> Process(EventData<T1> data);
+
+        /// <summary>
+        /// Re-sends the data that is received, after processing it.
+        /// </summary>
+        /// <param name="data">The data to be processed and re-sent</param>
+        private void BubbleUp(EventData<T1> data)
+        {
+            OnDataProvided?.Invoke(Process(data));
+        }
+
+        public DataProcessorBase(IDataProvider<T1> provider)
+        {
+            // Subscribe to a provider
+            provider.OnDataProvided += BubbleUp;
+        }
+    }
+}
+
+==> Library/Services/TimeSyncService.cs <==
+using System.Diagnostics;
+using System.Text;
+using backend.Library.Models;
+using backend.Library.Services.DataProcessors.DataExtractors;
+using backend.Library.Services.DataProviders;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Orbipacket;
+using Orbipacket.Library;
+
+namespace backend.Library.Services
+{
+    public class TimeSyncService
+    {
+        private readonly ILogger<TimeSyncService> _logger;
+        private readonly Stopwatch _timer;
+        private ulong t0;
+        private ulong t1,
+            t2,
+            t3 = 0;
+        private ulong t0Check;
+        private long _offset = 0;
+        public long Offset => _offset;
+
+        private readonly IPacketSender _serialSender;
+
+        /// <summary>
+        /// Create a new instance of TimeSyncService
+        /// </summary>
+        /// <param name="logger"></param>
+        /// <param name="serialSender"></param>
+        /// <param name="dataProvider"></param>
+        public TimeSyncService(
+            ILogger<TimeSyncService> logger,
+            [FromKeyedServices(ServiceKeys.SerialSender)] IPacketSender serialSender,
+            [FromKeyedServices(ServiceKeys.DataProvider)]
+                IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>> dataProvider
+        )
+        {
+            _timer = new();
+            _logger = logger;
+            _serialSender = serialSender;
+            dataProvider.OnDataProvided += HandleIncomingData;
+        }
+
+        public void BeginSync()
+        {
+            _timer.Reset();
+            _timer.Start();
+            _logger.LogInformation("Beginning sync...");
+
+            t0 = (ulong)((DateTime.UtcNow.Ticks - DateTime.UnixEpoch.Ticks) / 10);
+            // This comes in 100-nanosecond interval, div by 10 is microseconds
+            // also for some weird ahh reason utcnow is the time since 00:00:00 01-01-0000 instead of epoch
+            // that's why we subtract DateTime.UnixEpoch.Ticks (which is just the amount of 100-nanosecond interval from utcnow to unixepoch,
+            // it's a constant variable)
+
+            Packet syncRequest = new(
+                DeviceId.TimeSync,
+                0,
+                new Payload(BitConverter.GetBytes(t0)),
+                Packet.PacketType.TcPacket
+            );
+
+            byte[] packet = Encode.EncodePacket(syncRequest);
+            try
+            {
+                _serialSender.SendPacket(packet);
+            }
+            catch (TimeoutException)
+            {
+                throw new TimeoutException();
+            }
+            _logger.LogInformation("Packet Sent!");
+        }
+
+        private void HandleIncomingData(
+            EventData<Dictionary<SerialProvider.DataLabel, byte[]>> incomingData
+        )
+        {
+            foreach (KeyValuePair<SerialProvider.DataLabel, byte[]> keyValue in incomingData.Data)
+            {
+                if (keyValue.Key == SerialProvider.DataLabel.TimeSync)
+                {
+                    _logger.LogInformation("Calculating offset...");
+
+                    t3 = (ulong)((DateTime.UtcNow.Ticks - DateTime.UnixEpoch.Ticks) / 10);
+                    _logger.LogInformation(BitConverter.ToString(keyValue.Value));
+                    t0Check = BitConverter.ToUInt64(keyValue.Value, 0);
+                    if (t0Check != t0)
+                    {
+                        _logger.LogInformation("Error: expected t0: " + t0 + " got: " + t0Check);
+                        return;
+                    }
+                    t1 = BitConverter.ToUInt64(keyValue.Value, 8);
+                    t2 = BitConverter.ToUInt64(keyValue.Value, 16);
+
+                    _offset = ((long)t1 - (long)t0 + ((long)t2 - (long)t3)) / 2;
+
+                    _logger.LogInformation(
+                        $"Clock offset calculated: {_offset}, with CanSat t1 = {t1} and t2 = {t2} and local t3 = {t3}"
+                    );
+                }
+            }
+            if (_timer.ElapsedMilliseconds >= 5000)
+            {
+                _timer.Reset();
+                throw new TimeoutException();
+            }
+        }
+    }
+}
+
+==> Library/Services/EventFinalizers/AltitudeFinalizer.cs <==
+﻿using backend.Library.Models;
+using backend.Library.Services.DataProviders;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace backend.Library.Services.EventFinalizers
+{
+    public class AltitudeFinalizer : EventFinalizerBase<float>
+    {
+        public AltitudeFinalizer(
+            [FromKeyedServices(ServiceKeys.AltitudeExtractor)] IDataProvider<float> provider
+        )
+            : base(provider) { }
+
+        protected override EventData<(string, object)> Process(EventData<float> data)
+        {
+            return new EventData<(string, object)>
+            {
+                DataStamp = data.DataStamp,
+                Data = ("altitude", data.Data),
+            };
+        }
+    }
+}
+
+==> Library/Services/EventFinalizers/EventFinalizerAttribute.cs <==
+﻿namespace backend.Library.Services.EventFinalizers
+{
+    /// <summary>
+    /// Marks a class as an event finalizer, telling ServerEventsController to subscribe to it.
+    /// A class shouldn't use this attribute directly, but instead inherit EventFinalizerBase.
+    /// </summary>
+    /// <remarks>
+    /// The compiler allows classes besides EventFinalizerBase to use this attribute,
+    /// which may result in runtime errors.
+    /// TODO: find a way to improve this, perhaps with a code analyser.
+    /// TODO: I think this is useless...
+    /// </remarks>
+    [AttributeUsage(AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
+    internal sealed class EventFinalizerAttribute : Attribute { }
+}
+
+==> Library/Services/EventFinalizers/AltitudeDeltaFinalizer.cs <==
+﻿using backend.Library.Models;
+using backend.Library.Services.DataProviders;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace backend.Library.Services.EventFinalizers
+{
+    public class AltitudeDeltaFinalizer : EventFinalizerBase<float>
+    {
+        public AltitudeDeltaFinalizer(
+            [FromKeyedServices(ServiceKeys.AltitudeDeltaProcessor)] IDataProvider<float> provider
+        )
+            : base(provider) { }
+
+        protected override EventData<(string, object)> Process(EventData<float> data)
+        {
+            return new EventData<(string, object)>
+            {
+                DataStamp = data.DataStamp,
+                Data = ("altitudedelta", data.Data),
+            };
+        }
+    }
+}
+
+==> Library/Services/EventFinalizers/AccelerationZFinalizer.cs <==
+﻿using backend.Library.Models;
+using backend.Library.Services.DataProviders;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace backend.Library.Services.EventFinalizers
+{
+    public class AccelerationZFinalizer : EventFinalizerBase<float>
+    {
+        public AccelerationZFinalizer(
+            [FromKeyedServices(ServiceKeys.AccelerationZExtractor)] IDataProvider<float> provider
+        )
+            : base(provider) { }
+
+        protected override EventData<(string, object)> Process(EventData<float> data)
+        {
+            return new EventData<(string, object)>
+            {
+                DataStamp = data.DataStamp,
+                Data = ("accelerationz", data.Data),
+            };
+        }
+    }
+}
+
+==> Library/Services/EventFinalizers/VelocityFinalizer.cs <==
+﻿using backend.Library.Models;
+using backend.Library.Services.DataProviders;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace backend.Library.Services.EventFinalizers
+{
+    public class VelocityFinalizer : EventFinalizerBase<float>
+    {
+        public VelocityFinalizer(
+            [FromKeyedServices(ServiceKeys.VelocityProcessor)] IDataProvider<float> provider
+        )
+            : base(provider) { }
+
+        protected override EventData<(string, object)> Process(EventData<float> data)
+        {
+            return new EventData<(string, object)>
+            {
+                DataStamp = data.DataStamp,
+                Data = ("velocity", data.Data),
+            };
+        }
+    }
+}
+
+==> Library/Services/EventFinalizers/AccelerationYFinalizer.cs <==
+﻿using backend.Library.Models;
+using backend.Library.Services.DataProviders;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace backend.Library.Services.EventFinalizers
+{
+    public class AccelerationYFinalizer : EventFinalizerBase<float>
+    {
+        public AccelerationYFinalizer(
+            [FromKeyedServices(ServiceKeys.AccelerationYExtractor)] IDataProvider<float> provider
+        )
+            : base(provider) { }
+
+        protected override EventData<(string, object)> Process(EventData<float> data)
+        {
+            return new EventData<(string, object)>
+            {
+                DataStamp = data.DataStamp,
+                Data = ("accelerationy", data.Data),
+            };
+        }
+    }
+}
+
+==> Library/Services/EventFinalizers/HumidityFinalizer.cs <==
+﻿using backend.Library.Models;
+using backend.Library.Services.DataProviders;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace backend.Library.Services.EventFinalizers
+{
+    public class HumidityFinalizer : EventFinalizerBase<float>
+    {
+        public HumidityFinalizer(
+            [FromKeyedServices(ServiceKeys.HumidityExtractor)] IDataProvider<float> provider
+        )
+            : base(provider) { }
+
+        protected override EventData<(string, object)> Process(EventData<float> data)
+        {
+            return new EventData<(string, object)>
+            {
+                DataStamp = data.DataStamp,
+                Data = ("humidity", data.Data),
+            };
+        }
+    }
+}
+
+==> Library/Services/EventFinalizers/PressureFinalizer.cs <==
+﻿using backend.Library.Models;
+using backend.Library.Services.DataProviders;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace backend.Library.Services.EventFinalizers
+{
+    public class PressureFinalizer : EventFinalizerBase<float>
+    {
+        public PressureFinalizer(
+            [FromKeyedServices(ServiceKeys.PressureExtractor)] IDataProvider<float> provider
+        )
+            : base(provider) { }
+
+        protected override EventData<(string, object)> Process(EventData<float> data)
+        {
+            return new EventData<(string, object)>
+            {
+                DataStamp = data.DataStamp,
+                Data = ("pressure", data.Data),
+            };
+        }
+    }
+}
+
+==> Library/Services/EventFinalizers/TemperatureFinalizer.cs <==
+﻿using backend.Library.Models;
+using backend.Library.Services;
+using backend.Library.Services.DataProviders;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace backend.Library.Services.EventFinalizers
+{
+    /// <summary>
+    /// Finalizes a temperature event, tagged with "primary/temperature".
+    /// </summary>
+    public class TemperatureFinalizer : EventFinalizerBase<float>
+    {
+        public TemperatureFinalizer(
+            [FromKeyedServices(ServiceKeys.TemperatureExtractor)] IDataProvider<float> provider
+        )
+            : base(provider) { }
+
+        protected override EventData<(string, object)> Process(EventData<float> data)
+        {
+            return new EventData<(string, object)>
+            {
+                DataStamp = data.DataStamp,
+                Data = ("temperature", data.Data),
+            };
+        }
+    }
+}
+
+==> Library/Services/EventFinalizers/AltitudeGPSFinalizer.cs <==
+﻿using backend.Library.Models;
+using backend.Library.Services.DataProviders;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace backend.Library.Services.EventFinalizers
+{
+    public class AltitudeGPSFinalizer : EventFinalizerBase<float>
+    {
+        public AltitudeGPSFinalizer(
+            [FromKeyedServices(ServiceKeys.AltitudeGPSExtractor)] IDataProvider<float> provider
+        )
+            : base(provider) { }
+
+        protected override EventData<(string, object)> Process(EventData<float> data)
+        {
+            return new EventData<(string, object)>
+            {
+                DataStamp = data.DataStamp,
+                Data = ("altitudegps", data.Data),
+            };
+        }
+    }
+}
+
+==> Library/Services/EventFinalizers/EventFinalizerBase.cs <==
+﻿using backend.Library.Services.DataProcessors;
+using backend.Library.Services.DataProviders;
+
+namespace backend.Library.Services.EventFinalizers
+{
+    /// <summary>
+    /// Base class for event finalizers. An event finalizer must inherit this class
+    /// and must add a tag to incoming data (along with any processing deemed necessary).
+    /// </summary>
+    /// <typeparam name="T">Type of incoming data</typeparam>
+    [EventFinalizer]
+    public abstract class EventFinalizerBase<T>
+        : DataProcessorBase<T, (string, object)>,
+            IFinalizedProvider
+    {
+        protected EventFinalizerBase(IDataProvider<T> provider)
+            : base(provider) { }
+    }
+
+    /// <summary>
+    /// Newtype for the IDataProvider specialization implemented by a finalizer
+    /// </summary>
+    public interface IFinalizedProvider : IDataProvider<(string tag, object content)> { }
+}
+
+==> Library/Services/EventFinalizers/AccelerationXFinalizer.cs <==
+﻿using backend.Library.Models;
+using backend.Library.Services.DataProviders;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace backend.Library.Services.EventFinalizers
+{
+    public class AccelerationXFinalizer : EventFinalizerBase<float>
+    {
+        public AccelerationXFinalizer(
+            [FromKeyedServices(ServiceKeys.AccelerationXExtractor)] IDataProvider<float> provider
+        )
+            : base(provider) { }
+
+        protected override EventData<(string, object)> Process(EventData<float> data)
+        {
+            return new EventData<(string, object)>
+            {
+                DataStamp = data.DataStamp,
+                Data = ("accelerationx", data.Data),
+            };
+        }
+    }
+}
+
+==> Server/appsettings.json <==
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}
+
+==> Server/Server.csproj <==
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NReco.Logging.File" Version="1.2.2" />
+    <PackageReference Include="Spectre.Console" Version="0.49.1" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Library\Library.csproj" />
+  </ItemGroup>
+
+</Project>
+==> Server/appsettings.Development.json <==
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  }
+}
+
+==> Server/Controllers/PacketPost.cs <==
+using System.Text;
+using backend.Library.Services;
+using backend.Library.Services.DataProviders;
+using Microsoft.AspNetCore.Cors;
+using Microsoft.AspNetCore.Mvc;
+using Orbipacket;
+using Orbipacket.Library;
+
+namespace backend.Server.Controllers
+{
+    [ApiController]
+    [Route("api/[action]")]
+    [EnableCors]
+    public class PacketPost : ControllerBase
+    {
+        private readonly ILogger<PacketPost> _logger;
+
+        private readonly IServiceProvider _serviceProvider;
+
+        private readonly TimeSyncService _timeSyncService;
+
+        public PacketPost(
+            ILogger<PacketPost> logger,
+            IServiceProvider serviceProvider,
+            TimeSyncService timeSyncService
+        )
+        {
+            _logger = logger;
+            _serviceProvider = serviceProvider;
+            _timeSyncService = timeSyncService;
+        }
+
+        [HttpPost]
+        public ActionResult<Packet> PostPacket(Packet packet)
+        {
+            IPacketSender? _serialSender = _serviceProvider.GetKeyedService<IPacketSender>(
+                ServiceKeys.SerialSender
+            );
+
+            if (packet.DeviceId == DeviceId.TimeSync)
+            {
+                try
+                {
+                    _timeSyncService.BeginSync();
+                }
+                catch (TimeoutException)
+                {
+                    _logger.LogError("Time Sync attempt timed out.");
+                }
+                return Ok("Time synchronization started...");
+            }
+            else
+            {
+                Packet packetWithAdjustedTimestamp = new(
+                    packet.DeviceId,
+                    (ulong)((long)packet.Timestamp + _timeSyncService.Offset),
+                    packet.Payload,
+                    packet.Type
+                );
+
+                if (_serialSender == null)
+                {
+                    _logger.LogError("ISerialSender service is not available.");
+                    return StatusCode(500, "ISerialSender service is not available.");
+                }
+                byte[] encodedData;
+                try
+                {
+                    encodedData = Encode.EncodePacket(packetWithAdjustedTimestamp);
+                }
+                catch (Exception)
+                {
+                    _logger.LogError("Timestamp size overflow, sync CanSat time.");
+                    return StatusCode(400, "Timestamp size overflow, sync CanSat time.");
+                }
+                _serialSender.SendPacket(encodedData);
+                // _logger.LogInformation(
+                //     "Encoded packet data: {encodedData}",
+                //     BitConverter.ToString(encodedData)
+                // );
+                _logger.LogInformation(
+                    "Sent packet with ID: {packetId} with CanSatTimestamp {time} with data {data}, as type {type}",
+                    packetWithAdjustedTimestamp.DeviceId,
+                    packetWithAdjustedTimestamp.Timestamp,
+                    Encoding.ASCII.GetString(packetWithAdjustedTimestamp.Payload.Value),
+                    packetWithAdjustedTimestamp.Type
+                );
+                return Ok(packetWithAdjustedTimestamp);
+            }
+        }
+    }
+}
+
+==> Server/Controllers/ServerEventsController.cs <==
+﻿using backend.Library.Extensions;
+using backend.Library.Services.EventFinalizers;
+using Microsoft.AspNetCore.Cors;
+using Microsoft.AspNetCore.Mvc;
+
+namespace backend.Server.Controllers
+{
+    /// <summary>
+    /// Controller for handling server-sent events.
+    /// </summary>
+    [ApiController]
+    [Route("api/[action]")]
+    [EnableCors]
+    public class ServerEventsController : ControllerBase
+    {
+        // Logger provided by DI, used for printing information to all logging providers at once
+        private readonly ILogger<ServerEventsController> _logger;
+
+        // List of registered event finalizers, which provide ready-to-send events
+        private readonly IEnumerable<IFinalizedProvider> _eventFinalizers;
+
+        /// <summary>
+        /// Create a new instance of ServerEventsController
+        /// </summary>
+        /// <param name="logger"></param>
+        /// <param name="eventFinalizers"></param>
+        public ServerEventsController(
+            ILogger<ServerEventsController> logger,
+            IEnumerable<IFinalizedProvider> eventFinalizers
+        )
+        {
+            _logger = logger;
+            _eventFinalizers = eventFinalizers;
+            _logger.LogInformation(
+                "DI provided {evtFinalizerCount} event finalizers.",
+                _eventFinalizers.Count().ToString()
+            );
+        }
+
+        /// <summary>
+        /// Provide a GET endpoint for connecting to the SSE channel
+        /// </summary>
+        /// <returns>Good question</returns>
+        [HttpGet()]
+        public async Task SSE()
+        {
+            // Set the response headers; this tells the client we're initiating SSE
+            Response.Headers.ContentType = "text/event-stream";
+            Response.Headers.CacheControl = "no-cache";
+
+            CancellationToken cancellationToken = Program.ShutdownTokenSource.Token;
+
+            foreach (IFinalizedProvider eventFinalizer in _eventFinalizers)
+            {
+                // Subscribe to finalizers
+                eventFinalizer.OnDataProvided += async payload =>
+                {
+                    try
+                    {
+                        // Leaving these here just in case...
+                        //_logger.LogInformation("Sending event provided by {evtFinalizerType}.", eventFinalizer.GetType().Name);
+                        // _logger.LogInformation(
+                        //     "Tag: {tag}\nContent: {content}",
+                        //     payload.Data.tag,
+                        //     payload.Data.content
+                        // );
+
+                        // Send the tagged event in a properly formatted way
+                        await Response.WriteAsync($"event: {payload.Data.tag}\n");
+                        await Response.WriteAsync($"data: ");
+                        // Convert the content to JSON
+                        await Response.WriteJSONAsync(payload.Data.content);
+                        await Response.WriteAsync("@");
+                        await Response.WriteJSONAsync(payload.DataStamp);
+                        await Response.WriteAsync("\n\n");
+                        await Response.Body.FlushAsync();
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // _logger.LogWarning(
+                        //     "Error in SSE connection. The client may have disconnected."
+                        // );
+                    }
+                };
+            }
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    // Wait infinetely for the cancellation token to be triggered
+                    await Task.Delay(-1, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Exit the loop
+                    break;
+                }
+            }
+        }
+    }
+}
+
+==> Server/Controllers/CsvController.cs <==
+﻿using System.Globalization;
+using backend.Library.Models;
+using backend.Library.Services.EventFinalizers;
+
+namespace backend.Server.Controllers
+{
+    /// <summary>
+    /// Controller for handling CSV file creation and processing.
+    /// </summary>
+    public class CsvController : BackgroundService
+    {
+        private readonly ILogger<CsvController> _logger;
+        private readonly IEnumerable<IFinalizedProvider> _eventFinalizers;
+
+        private string? _currentTimestamp = null;
+        private readonly string[] _data = new string[11];
+        private StreamWriter? _sw;
+        private readonly object _lock = new();
+
+        // This works because of the BackgroundService base class
+        public CsvController(
+            ILogger<CsvController> logger,
+            IEnumerable<IFinalizedProvider> eventFinalizers
+        )
+        {
+            _logger = logger;
+            _eventFinalizers = eventFinalizers;
+        }
+
+        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
+        {
+            string directory = "Data";
+            string fileName = $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.csv";
+            string filePath = Path.Combine(directory, fileName);
+            Directory.CreateDirectory(directory);
+            _logger.LogInformation("CSV file path: {filePath}", filePath);
+
+            try
+            {
+                using (_sw = new StreamWriter(filePath, true))
+                {
+                    await _sw.WriteLineAsync(
+                        "pressure,temperature,altitude,humidity,latitude,longitude,altitudegps,velocity,altitudedelta,timestamp,offset"
+                    );
+                    await _sw.FlushAsync();
+
+                    for (int i = 0; i < _data.Length; i++)
+                        _data[i] = string.Empty;
+
+                    foreach (IFinalizedProvider eventFinalizer in _eventFinalizers)
+                    {
+                        eventFinalizer.OnDataProvided += HandleData; // Direct subscription
+                    }
+
+                    await Task.Delay(-1, cancellationToken);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("CsvController stopping due to cancellation.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during CsvController execution.");
+            }
+            finally
+            {
+                _logger.LogInformation("CsvController cleaning up subscriptions.");
+                foreach (IFinalizedProvider eventFinalizer in _eventFinalizers)
+                {
+                    eventFinalizer.OnDataProvided -= HandleData; // Direct unsubscription
+                }
+            }
+        }
+
+        private void HandleData(EventData<(string tag, object content)> payload)
+        {
+            if (_sw == null)
+            {
+                _logger.LogWarning("HandleData called but StreamWriter is null (disposed?).");
+                return;
+            }
+
+            try
+            {
+                string incomingTimestamp = payload.DataStamp.Timestamp.ToString();
+                bool lineWritten = false;
+
+                lock (_lock) // Ensure thread safety
+                {
+                    if (_currentTimestamp != null && incomingTimestamp != _currentTimestamp)
+                    {
+                        _sw.WriteLine(string.Join(",", _data));
+                        _sw.Flush();
+                        lineWritten = true;
+
+                        for (int i = 0; i < _data.Length; i++)
+                            _data[i] = string.Empty;
+                    }
+                    _currentTimestamp = incomingTimestamp;
+
+                    switch (payload.Data.tag.ToString().ToLowerInvariant())
+                    {
+                        case "pressure":
+                            _data[0] =
+                                payload.Data.content?.ToString()?.Replace(",", ".") ?? string.Empty;
+                            break;
+                        case "temperature":
+                            _data[1] =
+                                payload.Data.content?.ToString()?.Replace(",", ".") ?? string.Empty;
+                            break;
+                        case "altitude":
+                            _data[2] =
+                                payload.Data.content?.ToString()?.Replace(",", ".") ?? string.Empty;
+                            break;
+                        case "humidity":
+                            _data[3] =
+                                payload.Data.content?.ToString()?.Replace(",", ".") ?? string.Empty;
+                            break;
+                        case "velocity":
+                            _data[7] =
+                                payload.Data.content?.ToString()?.Replace(",", ".") ?? string.Empty;
+                            break;
+                        case "altitudedelta":
+                            _data[8] =
+                                payload.Data.content?.ToString()?.Replace(",", ".") ?? string.Empty;
+                            break;
+                        default:
+                            _logger.LogWarning("Unknown tag: {tag}", payload.Data.tag.ToString());
+                            break;
+                    }
+
+                    // Always update GPS coordinates from DataStamp
+                    _data[4] = double.IsNaN(payload.DataStamp.Coordinates.Latitude)
+                        ? "0"
+                        : payload.DataStamp.Coordinates.Latitude.ToString(
+                            CultureInfo.InvariantCulture
+                        );
+                    _data[5] = double.IsNaN(payload.DataStamp.Coordinates.Longitude)
+                        ? "0"
+                        : payload.DataStamp.Coordinates.Longitude.ToString(
+                            CultureInfo.InvariantCulture
+                        );
+                    _data[6] = float.IsNaN(payload.DataStamp.Coordinates.Altitude)
+                        ? "0"
+                        : payload.DataStamp.Coordinates.Altitude.ToString(
+                            CultureInfo.InvariantCulture
+                        );
+                    _data[9] = payload.DataStamp.Timestamp.ToString(CultureInfo.InvariantCulture);
+                    _data[10] = payload.DataStamp.Offset.ToString(CultureInfo.InvariantCulture);
+                }
+
+                if (lineWritten)
+                {
+                    // _logger.LogInformation("Wrote data row for timestamp {ts}", _currentTimestamp);
+                }
+            }
+            catch (ObjectDisposedException)
+            {
+                _logger.LogWarning(
+                    "ObjectDisposedException in HandleData. Service might be shutting down."
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Error processing payload in HandleData for tag {tag}",
+                    payload.Data.tag
+                );
+            }
+        }
+    }
+}
+
+==> Server/Program.cs <==
+﻿using System.IO.Ports;
+using backend.Library.Extensions;
+using backend.Library.Services;
+using backend.Library.Services.DataProcessors;
+using backend.Library.Services.DataProcessors.Analyzers;
+using backend.Library.Services.DataProcessors.DataExtractors;
+using backend.Library.Services.DataProviders;
+using backend.Library.Services.EventFinalizers;
+using backend.Server.Controllers;
+using NReco.Logging.File;
+using Spectre.Console;
+
+namespace backend
+{
+    public class Program
+    {
+        public static CancellationTokenSource ShutdownTokenSource = new();
+
+        public static void Main(string[] args)
+        {
+            // Create a builder, using the arguments passed from the command line.
+            WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+            // Reset logging to the console
+            builder.Logging.ClearProviders();
+            builder.Logging.AddSimpleConsole(options =>
+            {
+                options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss]";
+            });
+            builder.Logging.AddFile($"Logs/log{DateTimeOffset.UtcNow:yyyy-MM-dd-HH-mm-ss}");
+
+            Console.CancelKeyPress += (sender, eventArgs) =>
+            {
+                ShutdownTokenSource.Cancel();
+            };
+
+            if (args.Length > 1 && args[0] == "--read-file")
+            {
+                builder.Services.AddKeyedSingleton<
+                    IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>,
+                    FileProvider
+                >(ServiceKeys.DataProvider);
+
+                SubscribeToFinalizers(builder);
+
+                WebApplication fileApp = builder.Build();
+
+                fileApp.Start();
+
+                if (
+                    fileApp.Services.GetKeyedService<
+                        IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>
+                    >(ServiceKeys.DataProvider)
+                    is not FileProvider fileProvider
+                )
+                {
+                    Console.WriteLine("Failed to resolve FileProvider.");
+                    return;
+                }
+
+                string filepath = args[1];
+                try
+                {
+                    fileProvider.AnalyseFileContents(filepath);
+
+                    Console.WriteLine($"File {filepath} processed successfully.");
+                }
+                catch (FileNotFoundException)
+                {
+                    Console.WriteLine($"File {filepath} not found.");
+                    Environment.Exit(2); // Exit Code 2 (ERROR_FILE_NOT_FOUND)
+                }
+                Environment.Exit(0); // Exit Code 0 (ERROR_SUCCESS) - error here doesn't actually mean failure
+            }
+            // Get the name of the serial port where data is arriving
+            string serialPortName = PromptPortName();
+            Console.WriteLine($"Selected port: {serialPortName}");
+            // Add services to the container.
+            // Register internal services, using keyed services
+            if (serialPortName == "Mock Serial Data")
+            {
+                builder.Services.AddKeyedSingleton<
+                    IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>,
+                    MockDataProvider
+                >(ServiceKeys.DataProvider);
+            }
+            else
+            {
+                builder.Services.AddSingleton(
+                    (serviceProvider) =>
+                        ActivatorUtilities.CreateInstance<SerialProvider>(
+                            serviceProvider,
+                            serialPortName,
+                            19200,
+                            Parity.None
+                        )
+                );
+                builder.Services.AddKeyedSingleton<
+                    IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>
+                >(
+                    ServiceKeys.DataProvider,
+                    (serviceProvider, _) => serviceProvider.GetRequiredService<SerialProvider>()
+                );
+                builder.Services.AddKeyedSingleton<IPacketSender>(
+                    ServiceKeys.SerialSender,
+                    (serviceProvider, _) => serviceProvider.GetRequiredService<SerialProvider>()
+                );
+
+                builder.Services.AddSingleton<TimeSyncService>();
+            }
+            SubscribeToFinalizers(builder);
+            // This will register all classes annotated with ApiController
+            builder.Services.AddControllers();
+            // Set up Swagger/OpenAPI (learn more at https://aka.ms/aspnetcore/swashbuckle)
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
+
+            builder.Services.AddCors(options =>
+                options.AddDefaultPolicy(policy =>
+                    policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()
+                )
+            );
+
+            // Build an app from the configuration.
+            WebApplication app = builder.Build();
+
+            // Configure the HTTP request pipeline.
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+            }
+
+            app.UseHttpsRedirection();
+            app.UseCors();
+            app.UseAuthorization(); // TODO: Research this - is it necessary?
+            app.MapControllers();
+
+            // Start the app.
+            app.Run();
+        }
+
+        /// <summary>
+        /// Subscribes to finalizers for the services.
+        /// </summary>
+        /// <param name="builder">The web application builder.</param>
+        private static void SubscribeToFinalizers(WebApplicationBuilder builder)
+        {
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, PressureExtractor>(
+                    ServiceKeys.PressureExtractor
+                )
+                .AddFinalizer<PressureFinalizer>();
+
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, HumidityExtractor>(
+                    ServiceKeys.HumidityExtractor
+                )
+                .AddFinalizer<HumidityFinalizer>();
+
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, TemperatureExtractor>(
+                    ServiceKeys.TemperatureExtractor
+                )
+                .AddFinalizer<TemperatureFinalizer>();
+
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, AltitudeExtractor>(
+                    ServiceKeys.AltitudeExtractor
+                )
+                .AddFinalizer<AltitudeFinalizer>();
+
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, AltitudeDeltaProcessor>(
+                    ServiceKeys.AltitudeDeltaProcessor
+                )
+                .AddFinalizer<AltitudeDeltaFinalizer>();
+
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, VelocityProcessor>(
+                    ServiceKeys.VelocityProcessor
+                )
+                .AddFinalizer<VelocityFinalizer>();
+            builder.Services.AddHostedService<CsvController>();
+        }
+
+        private static string PromptPortName()
+        {
+            string port = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title(
+                        "Please select the serial port where the [blue]APC220 module[/] is connected."
+                    )
+                    .PageSize(10)
+                    .AddChoices(SerialPort.GetPortNames())
+                    .AddChoices("Mock Serial Data")
+                    .AddChoices("Custom Serial Port")
+                    .HighlightStyle(new Style(foreground: Color.White, background: Color.Blue))
+            );
+            if (port == "Custom Serial Port")
+            {
+                port = AnsiConsole.Ask<string>("Please enter the [blue]custom port name[/]:");
+            }
+            return port;
+        }
+    }
+}

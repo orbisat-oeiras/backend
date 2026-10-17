@@ -1,4 +1,5 @@
-﻿using backend.Library.Extensions;
+using backend.Library.Extensions;
+using backend.Library.Models;
 using backend.Library.Services.EventFinalizers;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
@@ -40,7 +41,7 @@ namespace backend.Server.Controllers
         /// <summary>
         /// Provide a GET endpoint for connecting to the SSE channel
         /// </summary>
-        /// <returns>Good question</returns>
+        /// <returns>Keeps the connection open, streaming events until the client disconnects or the server shuts down.</returns>
         [HttpGet()]
         public async Task SSE()
         {
@@ -48,12 +49,17 @@ namespace backend.Server.Controllers
             Response.Headers.ContentType = "text/event-stream";
             Response.Headers.CacheControl = "no-cache";
 
-            CancellationToken cancellationToken = Program.ShutdownTokenSource.Token;
+            using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(
+                HttpContext.RequestAborted,
+                Program.ShutdownTokenSource.Token
+            );
+            CancellationToken cancellationToken = cts.Token;
+
+            List<Action<EventData<(string tag, object content)>>> handlers = [];
 
             foreach (IFinalizedProvider eventFinalizer in _eventFinalizers)
             {
-                // Subscribe to finalizers
-                eventFinalizer.OnDataProvided += async payload =>
+                Action<EventData<(string tag, object content)>> handler = async payload =>
                 {
                     try
                     {
@@ -82,20 +88,29 @@ namespace backend.Server.Controllers
                         // );
                     }
                 };
+
+                handlers.Add(handler);
+                eventFinalizer.OnDataProvided += handler;
             }
 
-            while (!cancellationToken.IsCancellationRequested)
+            try
             {
-                try
+                await Task.Delay(-1, cancellationToken);
+            }
+            catch (OperationCanceledException) { }
+            finally
+            {
+                foreach (
+                    (
+                        IFinalizedProvider? finalizer,
+                        Action<EventData<(string tag, object content)>>? handler
+                    ) in _eventFinalizers.Zip(handlers)
+                )
                 {
-                    // Wait infinetely for the cancellation token to be triggered
-                    await Task.Delay(-1, cancellationToken);
+                    finalizer.OnDataProvided -= handler;
                 }
-                catch (OperationCanceledException)
-                {
-                    // Exit the loop
-                    break;
-                }
+
+                _logger.LogInformation("SSE client disconnected. Subscriptions cleaned up.");
             }
         }
     }

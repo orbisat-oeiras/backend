@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.IO;
 using System.IO.Ports;
@@ -191,11 +191,6 @@ namespace backend.Library.Services.DataProviders
                         }
                     }
                 }
-                List<Packet>? trailingGroup = packetResync.GetNextGroup(pendingPacket: null);
-                if (trailingGroup != null)
-                {
-                    SendToExtractors(trailingGroup);
-                }
             }
             finally
             {
@@ -311,6 +306,12 @@ namespace backend.Library.Services.DataProviders
             _timer.Stop();
             _timer.Elapsed -= CheckForIncomingData;
             _timer.Dispose();
+
+            List<Packet>? trailingGroup = packetResync.GetNextGroup(pendingPacket: null);
+            if (trailingGroup != null)
+            {
+                SendToExtractors(trailingGroup);
+            }
 
             if (_serialPort.IsOpen)
             {

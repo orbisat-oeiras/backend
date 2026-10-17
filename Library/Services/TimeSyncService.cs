@@ -63,14 +63,7 @@ namespace backend.Library.Services
             );
 
             byte[] packet = Encode.EncodePacket(syncRequest);
-            try
-            {
-                _serialSender.SendPacket(packet);
-            }
-            catch (TimeoutException)
-            {
-                throw new TimeoutException();
-            }
+            _serialSender.SendPacket(packet);
             _logger.LogInformation("Packet Sent!");
         }
 
@@ -78,6 +71,12 @@ namespace backend.Library.Services
             EventData<Dictionary<SerialProvider.DataLabel, byte[]>> incomingData
         )
         {
+            if (_timer.IsRunning && _timer.ElapsedMilliseconds >= 5000)
+            {
+                _timer.Reset();
+                _logger.LogWarning("TimeSync timed out after 5000ms.");
+                return;
+            }
             foreach (KeyValuePair<SerialProvider.DataLabel, byte[]> keyValue in incomingData.Data)
             {
                 if (keyValue.Key == SerialProvider.DataLabel.TimeSync)
@@ -96,16 +95,11 @@ namespace backend.Library.Services
                     t2 = BitConverter.ToUInt64(keyValue.Value, 16);
 
                     _offset = ((long)t1 - (long)t0 + ((long)t2 - (long)t3)) / 2;
-
+                    _timer.Reset();
                     _logger.LogInformation(
                         $"Clock offset calculated: {_offset}, with CanSat t1 = {t1} and t2 = {t2} and local t3 = {t3}"
                     );
                 }
-            }
-            if (_timer.ElapsedMilliseconds >= 5000)
-            {
-                _timer.Reset();
-                throw new TimeoutException();
             }
         }
     }
