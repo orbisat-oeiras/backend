@@ -29,6 +29,7 @@ namespace backend.Library.Services.DataProviders
         private readonly ILogger<MockDataProvider> _logger;
 
         private readonly System.Timers.Timer _timer;
+        private readonly System.Diagnostics.Stopwatch _stopwatch;
 
         public MockDataProvider(ILogger<MockDataProvider> logger)
         {
@@ -37,11 +38,13 @@ namespace backend.Library.Services.DataProviders
             _timer.Elapsed += GenerateMockData;
             _timer.Start();
             _logger.LogInformation("MockDataProvider started");
+            _stopwatch = new System.Diagnostics.Stopwatch();
+            _stopwatch.Start();
         }
 
         private void GenerateMockData(object? sender, ElapsedEventArgs e)
         {
-            long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1_000_000;
+            long now = (long)(_stopwatch.ElapsedMilliseconds * 1e3);
             _pressure += _random.Next(-100, 100);
             _altitude += _random.Next(-10, 10);
             _temperature += _random.Next(-1, 1) * 0.01f;

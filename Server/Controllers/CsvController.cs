@@ -13,7 +13,7 @@ namespace backend.Server.Controllers
         private readonly IEnumerable<IFinalizedProvider> _eventFinalizers;
 
         private string? _currentTimestamp = null;
-        private readonly string[] _data = new string[10];
+        private readonly string[] _data = new string[15];
         private StreamWriter? _sw;
         private readonly object _lock = new();
 
@@ -40,7 +40,7 @@ namespace backend.Server.Controllers
                 using (_sw = new StreamWriter(filePath, true))
                 {
                     await _sw.WriteLineAsync(
-                        "pressure,temperature,altitude,humidity,latitude,longitude,altitudegps,velocity,altitudedelta,timestamp"
+                        "pressure,temperature,altitude,humidity,latitude,longitude,altitudegps,velocity,altitudedelta,accerelationx,accelerationy,accelerationz,mission1,timestamp,offset"
                     );
                     await _sw.FlushAsync();
 
@@ -52,7 +52,22 @@ namespace backend.Server.Controllers
                         eventFinalizer.OnDataProvided += HandleData; // Direct subscription
                     }
 
-                    await Task.Delay(-1, cancellationToken);
+                    try
+                    {
+                        await Task.Delay(-1, cancellationToken);
+                    }
+                    catch (OperationCanceledException) { }
+                    finally
+                    {
+                        if (_currentTimestamp != null)
+                        {
+                            lock (_lock)
+                            {
+                                _sw.WriteLine(string.Join(",", _data));
+                                _sw.Flush();
+                            }
+                        }
+                    }
                 }
             }
             catch (OperationCanceledException)
@@ -125,6 +140,22 @@ namespace backend.Server.Controllers
                             _data[8] =
                                 payload.Data.content?.ToString()?.Replace(",", ".") ?? string.Empty;
                             break;
+                        case "accelerationx":
+                            _data[9] =
+                                payload.Data.content?.ToString()?.Replace(",", ".") ?? string.Empty;
+                            break;
+                        case "accelerationy":
+                            _data[10] =
+                                payload.Data.content?.ToString()?.Replace(",", ".") ?? string.Empty;
+                            break;
+                        case "accelerationz":
+                            _data[11] =
+                                payload.Data.content?.ToString()?.Replace(",", ".") ?? string.Empty;
+                            break;
+                        case "mission1":
+                            _data[12] =
+                                payload.Data.content?.ToString()?.Replace(",", ".") ?? string.Empty;
+                            break;
                         default:
                             _logger.LogWarning("Unknown tag: {tag}", payload.Data.tag.ToString());
                             break;
@@ -146,12 +177,13 @@ namespace backend.Server.Controllers
                         : payload.DataStamp.Coordinates.Altitude.ToString(
                             CultureInfo.InvariantCulture
                         );
-                    _data[9] = payload.DataStamp.Timestamp.ToString();
+                    _data[13] = payload.DataStamp.Timestamp.ToString(CultureInfo.InvariantCulture);
+                    _data[14] = payload.DataStamp.Offset.ToString(CultureInfo.InvariantCulture);
                 }
 
                 if (lineWritten)
                 {
-                    _logger.LogInformation("Wrote data row for timestamp {ts}", _currentTimestamp);
+                    // _logger.LogInformation("Wrote data row for timestamp {ts}", _currentTimestamp);
                 }
             }
             catch (ObjectDisposedException)

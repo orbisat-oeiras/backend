@@ -15,7 +15,7 @@ namespace backend.Library.Services.DataProcessors.DataExtractors
             : base(provider)
         {
             // Extract Acceleration Y data
-            _sourceIndexes = [SerialProvider.DataLabel.AccelerationY];
+            _sourceIndexes = [SerialProvider.DataLabel.AccelerationData];
         }
 
         protected override float Convert(IEnumerable<byte[]> data) =>

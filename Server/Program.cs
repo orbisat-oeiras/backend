@@ -1,4 +1,4 @@
-﻿using System.IO.Ports;
+using System.IO.Ports;
 using backend.Library.Extensions;
 using backend.Library.Services;
 using backend.Library.Services.DataProcessors;
@@ -16,7 +16,7 @@ namespace backend
     {
         public static CancellationTokenSource ShutdownTokenSource = new();
 
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             // Create a builder, using the arguments passed from the command line.
             WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -44,7 +44,9 @@ namespace backend
 
                 WebApplication fileApp = builder.Build();
 
-                fileApp.Start();
+                await fileApp.StartAsync();
+
+                await Task.Delay(500);
 
                 if (
                     fileApp.Services.GetKeyedService<
@@ -54,6 +56,7 @@ namespace backend
                 )
                 {
                     Console.WriteLine("Failed to resolve FileProvider.");
+                    await fileApp.StopAsync();
                     return;
                 }
 
@@ -61,15 +64,17 @@ namespace backend
                 try
                 {
                     fileProvider.AnalyseFileContents(filepath);
-
                     Console.WriteLine($"File {filepath} processed successfully.");
                 }
                 catch (FileNotFoundException)
                 {
                     Console.WriteLine($"File {filepath} not found.");
+                    await fileApp.StopAsync();
                     Environment.Exit(2); // Exit Code 2 (ERROR_FILE_NOT_FOUND)
                 }
-                Environment.Exit(0); // Exit Code 0 (ERROR_SUCCESS) - error here doesn't actually mean failure
+
+                await fileApp.StopAsync();
+                return;
             }
             // Get the name of the serial port where data is arriving
             string serialPortName = PromptPortName();
@@ -85,12 +90,8 @@ namespace backend
             }
             else
             {
-                builder.Services.AddKeyedSingleton<
-                    IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>,
-                    SerialProvider
-                >(
-                    ServiceKeys.DataProvider,
-                    (serviceProvider, _) =>
+                builder.Services.AddSingleton(
+                    (serviceProvider) =>
                         ActivatorUtilities.CreateInstance<SerialProvider>(
                             serviceProvider,
                             serialPortName,
@@ -98,6 +99,18 @@ namespace backend
                             Parity.None
                         )
                 );
+                builder.Services.AddKeyedSingleton<
+                    IDataProvider<Dictionary<SerialProvider.DataLabel, byte[]>>
+                >(
+                    ServiceKeys.DataProvider,
+                    (serviceProvider, _) => serviceProvider.GetRequiredService<SerialProvider>()
+                );
+                builder.Services.AddKeyedSingleton<IPacketSender>(
+                    ServiceKeys.SerialSender,
+                    (serviceProvider, _) => serviceProvider.GetRequiredService<SerialProvider>()
+                );
+
+                builder.Services.AddSingleton<TimeSyncService>();
             }
             SubscribeToFinalizers(builder);
             // This will register all classes annotated with ApiController
@@ -172,6 +185,26 @@ namespace backend
                     ServiceKeys.VelocityProcessor
                 )
                 .AddFinalizer<VelocityFinalizer>();
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, AccelerationXExtractor>(
+                    ServiceKeys.AccelerationXExtractor
+                )
+                .AddFinalizer<AccelerationXFinalizer>();
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, AccelerationYExtractor>(
+                    ServiceKeys.AccelerationYExtractor
+                )
+                .AddFinalizer<AccelerationYFinalizer>();
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, AccelerationZExtractor>(
+                    ServiceKeys.AccelerationZExtractor
+                )
+                .AddFinalizer<AccelerationZFinalizer>();
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, Mission1Extractor>(
+                    ServiceKeys.Mission1Extractor
+                )
+                .AddFinalizer<Mission1Finalizer>();
             builder.Services.AddHostedService<CsvController>();
         }
 

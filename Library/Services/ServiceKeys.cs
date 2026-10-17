@@ -13,5 +13,8 @@
         AccelerationXExtractor,
         AccelerationYExtractor,
         AccelerationZExtractor,
+        SerialSender,
+        TimeSyncService,
+        Mission1Extractor,
     }
 }
