@@ -238,6 +238,16 @@ namespace backend.Library.Services.DataProviders
                         Math.Sqrt(accelx * accelx + accely * accely + accelz * accelz)
                     );
                 }
+                if (label == DataLabel.Mission1)
+                {
+                    int val = packet.Payload.Value.Length >= 4
+                        ? BitConverter.ToInt32(packet.Payload.Value, 0)
+                        : (packet.Payload.Value.Length > 0 ? packet.Payload.Value[0] : 0);
+                    _logger.LogInformation(
+                        "Mission1: {value}",
+                        val
+                    );
+                }
                 else
                 {
                     _logger.LogInformation(

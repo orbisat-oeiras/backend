@@ -13,7 +13,7 @@ namespace backend.Server.Controllers
         private readonly IEnumerable<IFinalizedProvider> _eventFinalizers;
 
         private string? _currentTimestamp = null;
-        private readonly string[] _data = new string[14];
+        private readonly string[] _data = new string[15];
         private StreamWriter? _sw;
         private readonly object _lock = new();
 
@@ -40,7 +40,7 @@ namespace backend.Server.Controllers
                 using (_sw = new StreamWriter(filePath, true))
                 {
                     await _sw.WriteLineAsync(
-                        "pressure,temperature,altitude,humidity,latitude,longitude,altitudegps,velocity,altitudedelta,accerelationx,accelerationy,accelerationz,timestamp,offset"
+                        "pressure,temperature,altitude,humidity,latitude,longitude,altitudegps,velocity,altitudedelta,accerelationx,accelerationy,accelerationz,mission1,timestamp,offset"
                     );
                     await _sw.FlushAsync();
 
@@ -152,6 +152,10 @@ namespace backend.Server.Controllers
                             _data[11] =
                                 payload.Data.content?.ToString()?.Replace(",", ".") ?? string.Empty;
                             break;
+                        case "mission1":
+                            _data[12] =
+                                payload.Data.content?.ToString()?.Replace(",", ".") ?? string.Empty;
+                            break;
                         default:
                             _logger.LogWarning("Unknown tag: {tag}", payload.Data.tag.ToString());
                             break;
@@ -173,8 +177,8 @@ namespace backend.Server.Controllers
                         : payload.DataStamp.Coordinates.Altitude.ToString(
                             CultureInfo.InvariantCulture
                         );
-                    _data[12] = payload.DataStamp.Timestamp.ToString(CultureInfo.InvariantCulture);
-                    _data[13] = payload.DataStamp.Offset.ToString(CultureInfo.InvariantCulture);
+                    _data[13] = payload.DataStamp.Timestamp.ToString(CultureInfo.InvariantCulture);
+                    _data[14] = payload.DataStamp.Offset.ToString(CultureInfo.InvariantCulture);
                 }
 
                 if (lineWritten)

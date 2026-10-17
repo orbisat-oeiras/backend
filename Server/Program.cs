@@ -200,6 +200,11 @@ namespace backend
                     ServiceKeys.AccelerationZExtractor
                 )
                 .AddFinalizer<AccelerationZFinalizer>();
+            builder
+                .Services.AddKeyedSingleton<IDataProvider<float>, Mission1Extractor>(
+                    ServiceKeys.Mission1Extractor
+                )
+                .AddFinalizer<Mission1Finalizer>();
             builder.Services.AddHostedService<CsvController>();
         }
 
